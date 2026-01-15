@@ -1,0 +1,52 @@
+.content {
+  display: grid;
+  grid-template-columns: 3fr 1fr;
+  gap: 24px;
+  padding: 32px;
+}
+
+.listings-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.listing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 24px;
+}
+
+.card {
+  background: #ffffff;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.05);
+}
+
+.card-image {
+  height: 160px;
+  background: #e5e7eb; /* IMAGE PLACEHOLDER */
+}
+
+.card-body {
+  padding: 16px;
+}
+
+.card-body h3 {
+  margin: 8px 0;
+}
+
+.card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.card-footer button {
+  background: #0f9d58;
+  color: white;
+  padding: 8px 14px;
+  border-radius: 8px;
+}

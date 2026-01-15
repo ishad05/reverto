@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Reverto | Waste Marketplace</title>
+
+  <link rel="stylesheet" href="/assets/reverto/css/base.css">
+  <link rel="stylesheet" href="/assets/reverto/css/navbar.css">
+  <link rel="stylesheet" href="/assets/reverto/css/filters.css">
+  <link rel="stylesheet" href="/assets/reverto/css/listings.css">
+  <link rel="stylesheet" href="/assets/reverto/css/impact.css">
+  <script defer src="/assets/reverto/js/data.js"></script>
+  <script defer src="/assets/reverto/js/main.js"></script>
+</head>
+
+<body>
+
+  <!-- NAVBAR -->
+  <header class="navbar">
+    <div class="logo">Reverto</div>
+
+    <input type="text" class="search" placeholder="Search waste by type or keyword">
+
+    <div class="nav-right">
+      <span class="location">📍 Bangalore East</span>
+      <span class="icon">🔔</span>
+      <span class="avatar">👤</span>
+    </div>
+  </header>
+
+  <!-- HERO -->
+  <section class="hero">
+    <h1>Waste available near you</h1>
+    <p>
+      <strong>124</strong> listings ·
+      <strong>12</strong> sellers ·
+      Updated today
+    </p>
+  </section>
+
+  <!-- CATEGORIES -->
+  <section class="categories">
+    <button>Plastic</button>
+    <button>E-waste</button>
+    <button>Metal</button>
+    <button>Paper</button>
+    <button>Organic</button>
+    <button>Construction</button>
+    <button>Textile</button>
+    <button>Glass</button>
+  </section>
+
+  <!-- FILTERS -->
+  <section class="filters">
+    <span>Filters:</span>
+    <button>Distance</button>
+    <button>Price</button>
+    <button>Quantity</button>
+    <button>Pickup Type</button>
+  </section>
+
+  <!-- MAIN CONTENT -->
+  <main class="content">
+
+    <!-- LISTINGS -->
+    <section class="listings">
+      <div class="listings-header">
+        <h2>Available Listings</h2>
+        <div>
+          <button class="active">Grid</button>
+          <button>Map</button>
+        </div>
+      </div>
+
+      <div class="listing-grid" id="listingGrid">
+        <!-- JS injects cards here -->
+      </div>
+    </section>
+
+    <!-- IMPACT -->
+    <aside class="impact">
+      <h3>Your Impact</h3>
+
+      <div class="impact-item">
+        <p>Waste diverted from landfill</p>
+        <h2>2,847 kg</h2>
+      </div>
+
+      <div class="impact-item">
+        <p>Estimated CO₂ saved</p>
+        <h2>1,423 kg</h2>
+      </div>
+
+      <p class="community">Community total: <strong>45.2 tons</strong> this month</p>
+    </aside>
+
+  </main>
+
+</body>
+</html>

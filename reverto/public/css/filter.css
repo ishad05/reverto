@@ -1,0 +1,21 @@
+.hero {
+  padding: 32px;
+  background: linear-gradient(#ecfdf5, #ffffff);
+  text-align: center;
+}
+
+.categories, .filters {
+  display: flex;
+  gap: 12px;
+  padding: 16px 32px;
+  flex-wrap: wrap;
+}
+
+.categories button,
+.filters button {
+  padding: 8px 14px;
+  border: 1px solid #d1fae5;
+  border-radius: 20px;
+  background: #ffffff;
+  color: #047857;
+}

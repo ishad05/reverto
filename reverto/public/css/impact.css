@@ -1,0 +1,14 @@
+.impact {
+  background: #ecfdf5;
+  border-radius: 16px;
+  padding: 24px;
+}
+
+.impact-item {
+  margin-bottom: 24px;
+}
+
+.community {
+  font-size: 14px;
+  color: #065f46;
+}
