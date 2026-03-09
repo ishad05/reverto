@@ -1,83 +1,93 @@
-import { MapPin, Eye, MessageSquare, Bookmark } from "lucide-react";
+import { MapPin, MessageSquare, Bookmark } from "lucide-react";
+import { Card } from "./ui/card";
+import { Button } from "./ui/button";
 
 interface WasteCardProps {
   image: string;
-  wasteType: string;
-  quantity: string;
-  price: string;
-  sellerType: "Industry" | "Individual";
-  distance: string;
   title: string;
+  quantity?: string;
+  pricePerQuantity?: string;
+  status?: string;
 }
 
 export function WasteCard({
   image,
-  wasteType,
   quantity,
-  price,
-  sellerType,
-  distance,
   title,
+  pricePerQuantity,
+  status,
 }: WasteCardProps) {
-  const isFree = price === "Free";
+  const isFree =
+    !pricePerQuantity || pricePerQuantity.toLowerCase().includes("free");
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow duration-300 group">
-      {/* Image */}
+    <Card className="overflow-hidden border-gray-200 hover:shadow-lg transition-shadow duration-300 group">
       <div className="relative h-48 overflow-hidden bg-gray-100">
-        <img
-          src={image}
-          alt={title}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-        />
-        <div className="absolute top-3 right-3">
-          <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-            isFree 
-              ? "bg-emerald-500 text-white" 
-              : "bg-white/90 text-gray-800"
-          }`}>
-            {price}
-          </span>
-        </div>
+        {image ? (
+          <img
+            src={image}
+            alt={title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-sm text-gray-400">
+            No image
+          </div>
+        )}
+        {pricePerQuantity && (
+          <div className="absolute top-3 right-3">
+            <span
+              className={`px-3 py-1 rounded-full text-xs font-medium ${
+                isFree
+                  ? "bg-emerald-500 text-white"
+                  : "bg-white/90 text-gray-800"
+              }`}
+            >
+              {pricePerQuantity}
+            </span>
+          </div>
+        )}
       </div>
 
-      {/* Content */}
-      <div className="p-4">
-        {/* Waste Type Badge */}
-        <div className="flex items-center justify-between mb-2">
-          <span className="inline-block px-2 py-1 bg-emerald-50 text-emerald-700 text-xs font-medium rounded">
-            {wasteType}
-          </span>
-          <span className="text-xs text-gray-500">{sellerType}</span>
-        </div>
-
-        {/* Title */}
-        <h3 className="text-gray-900 mb-2 line-clamp-2 min-h-[3rem]">
+      <div className="p-4 space-y-3">
+        <h3 className="text-gray-900 mb-1 line-clamp-2 min-h-[3rem]">
           {title}
         </h3>
 
-        {/* Quantity and Distance */}
-        <div className="flex items-center justify-between text-sm text-gray-600 mb-4">
-          <span className="font-medium">{quantity}</span>
-          <div className="flex items-center gap-1">
-            <MapPin className="w-4 h-4 text-gray-400" />
-            <span>{distance}</span>
+        {(quantity || status) && (
+          <div className="flex items-center justify-between text-sm text-gray-600">
+            <span className="font-medium">
+              {quantity ? quantity : "Quantity not specified"}
+            </span>
+            {status && (
+              <div className="flex items-center gap-1">
+                <MapPin className="w-4 h-4 text-gray-400" />
+                <span>{status}</span>
+              </div>
+            )}
           </div>
-        </div>
+        )}
 
-        {/* Action Buttons */}
-        <div className="flex items-center gap-2">
-          <button className="flex-1 px-3 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors">
+        <div className="flex items-center gap-2 pt-2">
+          <Button className="flex-1" size="sm">
             View details
-          </button>
-          <button className="px-3 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="border-gray-300 text-gray-700"
+          >
             <MessageSquare className="w-4 h-4" />
-          </button>
-          <button className="px-3 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="border-gray-300 text-gray-700"
+          >
             <Bookmark className="w-4 h-4" />
-          </button>
+          </Button>
         </div>
       </div>
-    </div>
+    </Card>
   );
 }

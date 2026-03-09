@@ -6,7 +6,7 @@ import App from './App.tsx'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <FrappeProvider>
+    <FrappeProvider url={window.location.origin}>
       <App />
     </FrappeProvider>
   </StrictMode>,
