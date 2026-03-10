@@ -8,6 +8,7 @@ import frappe
 class ProductSummary(TypedDict):
 	name: str
 	product_name: str
+	category: str | None
 	quantity: int | None
 	price_per_quantity: float | None
 	status: str
@@ -15,9 +16,19 @@ class ProductSummary(TypedDict):
 	owner: str
 
 
+def _category_field_exists() -> bool:
+	"""Check whether the category column has been created via bench migrate."""
+	try:
+		return frappe.db.has_column("Product", "category")
+	except Exception:
+		return False
+
+
 @frappe.whitelist(allow_guest=True)
-def list_products(limit: int = 50) -> list[ProductSummary]:
+def list_products(limit: int = 50, category: str | None = None) -> list[ProductSummary]:
 	"""Return a concise list of Product docs for the marketplace frontend."""
+
+	has_category = _category_field_exists()
 
 	fields = [
 		"name",
@@ -28,11 +39,17 @@ def list_products(limit: int = 50) -> list[ProductSummary]:
 		"product_image",
 		"owner",
 	]
+	if has_category:
+		fields.append("category")
+
+	filters: dict[str, Any] = {"status": "Available"}
+	if category and has_category:
+		filters["category"] = category
 
 	products: list[dict[str, Any]] = frappe.get_all(
 		"Product",
 		fields=fields,
-		filters={"status": "Available"},
+		filters=filters,
 		limit=limit,
 		order_by="creation desc",
 		ignore_permissions=True,
@@ -42,6 +59,7 @@ def list_products(limit: int = 50) -> list[ProductSummary]:
 		ProductSummary(
 			name=p.get("name", ""),
 			product_name=p.get("product_name", ""),
+			category=p.get("category"),
 			quantity=p.get("quantity"),
 			price_per_quantity=p.get("price_per_quantity"),
 			status=p.get("status") or "Available",
@@ -50,4 +68,3 @@ def list_products(limit: int = 50) -> list[ProductSummary]:
 		)
 		for p in products
 	]
-

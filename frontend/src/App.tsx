@@ -3,13 +3,15 @@ import { Map, Grid3X3 } from "lucide-react";
 import { useFrappeGetCall } from "frappe-react-sdk";
 import { Navigation } from "./components/Navigation";
 import { Hero } from "./components/Hero";
-import { CategoryFilters } from "./components/CategoryFilters";
+import { CategoryFilters, categories } from "./components/CategoryFilters";
 import { WasteCard } from "./components/WasteCard";
 import { SustainabilityWidget } from "./components/SustainabilityWidget";
 import { Footer } from "./components/Footer";
+
 type ProductSummary = {
   name: string;
   product_name: string;
+  category?: string | null;
   quantity?: number | null;
   price_per_quantity?: number | null;
   status?: string;
@@ -23,12 +25,16 @@ type FrappeResponse<T> = {
 
 export default function App() {
   const [viewMode, setViewMode] = useState<"grid" | "map">("grid");
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   const { data, isLoading, error } = useFrappeGetCall<FrappeResponse<
     ProductSummary[]
   >>(
     "reverto.api.products.list_products",
-    { limit: 50 },
+    {
+      limit: 50,
+      ...(selectedCategory ? { category: selectedCategory } : {}),
+    },
   );
 
   const products = data?.message ?? [];
@@ -46,15 +52,26 @@ export default function App() {
     [products],
   );
 
+  const selectedCategoryLabel = selectedCategory
+    ? categories.find((c) => c.value === selectedCategory)?.name ?? selectedCategory
+    : null;
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navigation />
       <Hero listingCount={listingCount} sellerCount={sellerCount} />
-      <CategoryFilters />
+      <CategoryFilters
+        selectedCategory={selectedCategory}
+        onCategoryChange={setSelectedCategory}
+      />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-gray-900">Available Listings</h2>
+          <h2 className="text-gray-900">
+            {selectedCategoryLabel
+              ? `${selectedCategoryLabel} Listings`
+              : "Available Listings"}
+          </h2>
 
           <div className="flex items-center gap-2 bg-white border border-gray-300 rounded-lg p-1">
             <button
@@ -107,19 +124,6 @@ export default function App() {
                 ) : products && products.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                     {products.map((product, index) => {
-                      const name = (product.product_name || "").toLowerCase();
-                      let wasteType: string;
-                      if (name.includes("plastic") || name.includes("straw")) {
-                        wasteType = "Plastic";
-                      } else if (
-                        name.includes("wood") ||
-                        name.includes("cork")
-                      ) {
-                        wasteType = "Organic";
-                      } else {
-                        wasteType = "E-waste";
-                      }
-
                       const sellerType =
                         (product.owner && product.owner !== "Guest"
                           ? "Industry"
@@ -144,7 +148,7 @@ export default function App() {
                               : undefined
                           }
                           status={product.status}
-                          wasteType={wasteType}
+                          wasteType={product.category ?? "Other"}
                           sellerType={sellerType}
                           distance={distance}
                         />
@@ -157,12 +161,14 @@ export default function App() {
                       <Grid3X3 className="w-6 h-6" />
                     </div>
                     <h3 className="text-lg font-medium text-gray-900">
-                      No listings yet
+                      {selectedCategoryLabel
+                        ? `No listings in ${selectedCategoryLabel}`
+                        : "No listings yet"}
                     </h3>
                     <p className="text-sm text-gray-600 max-w-md">
-                      Once sellers start listing their waste, you’ll see
-                      available materials here. Check back soon or create a
-                      listing if you have waste to offer.
+                      {selectedCategoryLabel
+                        ? `There are no available ${selectedCategoryLabel.toLowerCase()} listings right now. Try another category or check back soon.`
+                        : "Once sellers start listing their waste, you'll see available materials here. Check back soon or create a listing if you have waste to offer."}
                     </p>
                   </div>
                 )}

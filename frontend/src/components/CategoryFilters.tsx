@@ -1,12 +1,11 @@
-import { useState } from "react";
-import { 
-  Droplet, 
-  Laptop, 
-  Hammer, 
-  FileText, 
-  Leaf, 
-  Building2, 
-  Shirt, 
+import {
+  Droplet,
+  Laptop,
+  Hammer,
+  FileText,
+  Leaf,
+  Building2,
+  Shirt,
   Wine,
   MapPin,
   DollarSign,
@@ -14,15 +13,15 @@ import {
   Truck
 } from "lucide-react";
 
-const categories = [
-  { id: "plastic", name: "Plastic", icon: Droplet },
-  { id: "ewaste", name: "E-waste", icon: Laptop },
-  { id: "metal", name: "Metal", icon: Hammer },
-  { id: "paper", name: "Paper", icon: FileText },
-  { id: "organic", name: "Organic", icon: Leaf },
-  { id: "construction", name: "Construction", icon: Building2 },
-  { id: "textile", name: "Textile", icon: Shirt },
-  { id: "glass", name: "Glass", icon: Wine },
+export const categories = [
+  { id: "plastic", name: "Plastic", value: "Plastic", icon: Droplet },
+  { id: "ewaste", name: "E-waste", value: "E-waste", icon: Laptop },
+  { id: "metal", name: "Metal", value: "Metal", icon: Hammer },
+  { id: "paper", name: "Paper", value: "Paper", icon: FileText },
+  { id: "organic", name: "Organic", value: "Organic", icon: Leaf },
+  { id: "construction", name: "Construction", value: "Construction", icon: Building2 },
+  { id: "textile", name: "Textile", value: "Textile", icon: Shirt },
+  { id: "glass", name: "Glass", value: "Glass", icon: Wine },
 ];
 
 const additionalFilters = [
@@ -32,20 +31,12 @@ const additionalFilters = [
   { id: "pickup", name: "Pickup Type", icon: Truck },
 ];
 
-export function CategoryFilters() {
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [selectedFilters, setSelectedFilters] = useState<Set<string>>(new Set());
+interface CategoryFiltersProps {
+  selectedCategory: string | null;
+  onCategoryChange: (category: string | null) => void;
+}
 
-  const toggleFilter = (filterId: string) => {
-    const newFilters = new Set(selectedFilters);
-    if (newFilters.has(filterId)) {
-      newFilters.delete(filterId);
-    } else {
-      newFilters.add(filterId);
-    }
-    setSelectedFilters(newFilters);
-  };
-
+export function CategoryFilters({ selectedCategory, onCategoryChange }: CategoryFiltersProps) {
   return (
     <div className="bg-white border-b border-gray-200 sticky top-16 z-40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -53,11 +44,11 @@ export function CategoryFilters() {
         <div className="flex items-center gap-3 mb-4 overflow-x-auto pb-2">
           {categories.map((category) => {
             const Icon = category.icon;
-            const isSelected = selectedCategory === category.id;
+            const isSelected = selectedCategory === category.value;
             return (
               <button
                 key={category.id}
-                onClick={() => setSelectedCategory(isSelected ? null : category.id)}
+                onClick={() => onCategoryChange(isSelected ? null : category.value)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all whitespace-nowrap ${
                   isSelected
                     ? "bg-emerald-100 border-emerald-500 text-emerald-700"
@@ -76,16 +67,10 @@ export function CategoryFilters() {
           <span className="text-sm text-gray-500 whitespace-nowrap mr-2">Filters:</span>
           {additionalFilters.map((filter) => {
             const Icon = filter.icon;
-            const isSelected = selectedFilters.has(filter.id);
             return (
               <button
                 key={filter.id}
-                onClick={() => toggleFilter(filter.id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm border transition-all whitespace-nowrap ${
-                  isSelected
-                    ? "bg-emerald-600 border-emerald-600 text-white"
-                    : "bg-white border-gray-300 text-gray-600 hover:bg-gray-50"
-                }`}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm border transition-all whitespace-nowrap bg-white border-gray-300 text-gray-600 hover:bg-gray-50"
               >
                 <Icon className="w-3.5 h-3.5" />
                 <span>{filter.name}</span>

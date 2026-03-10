@@ -7,6 +7,7 @@
  "engine": "InnoDB",
  "field_order": [
   "product_name",
+  "category",
   "quantity",
   "price_per_quantity",
   "status",
@@ -18,6 +19,14 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Product Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "category",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Category",
+   "options": "Plastic\nE-waste\nMetal\nPaper\nOrganic\nConstruction\nTextile\nGlass",
    "reqd": 1
   },
   {
