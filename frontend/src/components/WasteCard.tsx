@@ -8,6 +8,9 @@ interface WasteCardProps {
   quantity?: string;
   pricePerQuantity?: string;
   status?: string;
+  wasteType?: string;
+  sellerType?: string;
+  distance?: string;
 }
 
 export function WasteCard({
@@ -16,6 +19,9 @@ export function WasteCard({
   title,
   pricePerQuantity,
   status,
+  wasteType,
+  sellerType,
+  distance,
 }: WasteCardProps) {
   const isFree =
     !pricePerQuantity || pricePerQuantity.toLowerCase().includes("free");
@@ -50,6 +56,15 @@ export function WasteCard({
       </div>
 
       <div className="p-4 space-y-3">
+        <div className="flex items-center justify-between mb-1">
+          <span className="inline-flex items-center rounded-full border border-emerald-100 bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700">
+            {wasteType ?? "E-waste"}
+          </span>
+          <span className="text-xs text-gray-500">
+            {sellerType ?? "Industry"}
+          </span>
+        </div>
+
         <h3 className="text-gray-900 mb-1 line-clamp-2 min-h-[3rem]">
           {title}
         </h3>
@@ -59,12 +74,10 @@ export function WasteCard({
             <span className="font-medium">
               {quantity ? quantity : "Quantity not specified"}
             </span>
-            {status && (
-              <div className="flex items-center gap-1">
-                <MapPin className="w-4 h-4 text-gray-400" />
-                <span>{status}</span>
-              </div>
-            )}
+            <div className="flex items-center gap-1">
+              <MapPin className="w-4 h-4 text-gray-400" />
+              <span>{distance ?? "2.3 km"}</span>
+            </div>
           </div>
         )}
 

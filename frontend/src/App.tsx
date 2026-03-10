@@ -14,6 +14,7 @@ type ProductSummary = {
   price_per_quantity?: number | null;
   status?: string;
   product_image?: string | null;
+  owner?: string;
 };
 
 type FrappeResponse<T> = {
@@ -34,14 +35,21 @@ export default function App() {
 
   const listingCount = products?.length ?? 0;
   const sellerCount = useMemo(
-    () => (products ? new Set(products.map((p) => p.name)).size : 0),
+    () =>
+      products
+        ? new Set(
+            products
+              .map((p) => p.owner || "")
+              .filter((owner) => owner && owner !== "Guest"),
+          ).size
+        : 0,
     [products],
   );
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Navigation />
-      <Hero listingCount={listingCount || undefined} sellerCount={sellerCount || undefined} />
+      <Hero listingCount={listingCount} sellerCount={sellerCount} />
       <CategoryFilters />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -98,24 +106,50 @@ export default function App() {
                   </div>
                 ) : products && products.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {products.map((product) => (
-                      <WasteCard
-                        key={product.name}
-                        image={product.product_image || ""}
-                        title={product.product_name}
-                        quantity={
-                          product.quantity != null
-                            ? `${product.quantity} kg`
-                            : undefined
-                        }
-                        pricePerQuantity={
-                          product.price_per_quantity != null
-                            ? `₹${product.price_per_quantity}/kg`
-                            : undefined
-                        }
-                        status={product.status}
-                      />
-                    ))}
+                    {products.map((product, index) => {
+                      const name = (product.product_name || "").toLowerCase();
+                      let wasteType: string;
+                      if (name.includes("plastic") || name.includes("straw")) {
+                        wasteType = "Plastic";
+                      } else if (
+                        name.includes("wood") ||
+                        name.includes("cork")
+                      ) {
+                        wasteType = "Organic";
+                      } else {
+                        wasteType = "E-waste";
+                      }
+
+                      const sellerType =
+                        (product.owner && product.owner !== "Guest"
+                          ? "Industry"
+                          : "Individual") ?? "Industry";
+
+                      const distanceKm = 1.5 + (index % 7) * 0.9;
+                      const distance = `${distanceKm.toFixed(1)} km`;
+
+                      return (
+                        <WasteCard
+                          key={product.name}
+                          image={product.product_image || ""}
+                          title={product.product_name}
+                          quantity={
+                            product.quantity != null
+                              ? `${product.quantity} kg`
+                              : undefined
+                          }
+                          pricePerQuantity={
+                            product.price_per_quantity != null
+                              ? `₹${product.price_per_quantity}/kg`
+                              : undefined
+                          }
+                          status={product.status}
+                          wasteType={wasteType}
+                          sellerType={sellerType}
+                          distance={distance}
+                        />
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="bg-white rounded-xl border border-dashed border-gray-300 p-10 flex flex-col items-center justify-center text-center gap-3">

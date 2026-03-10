@@ -12,6 +12,7 @@ class ProductSummary(TypedDict):
 	price_per_quantity: float | None
 	status: str
 	product_image: str | None
+	owner: str
 
 
 @frappe.whitelist(allow_guest=True)
@@ -25,6 +26,7 @@ def list_products(limit: int = 50) -> list[ProductSummary]:
 		"price_per_quantity",
 		"status",
 		"product_image",
+		"owner",
 	]
 
 	products: list[dict[str, Any]] = frappe.get_all(
@@ -44,6 +46,7 @@ def list_products(limit: int = 50) -> list[ProductSummary]:
 			price_per_quantity=p.get("price_per_quantity"),
 			status=p.get("status") or "Available",
 			product_image=p.get("product_image"),
+			owner=p.get("owner", ""),
 		)
 		for p in products
 	]
