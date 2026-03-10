@@ -1,12 +1,17 @@
 import { useMemo, useState } from "react";
-import { Map, Grid3X3 } from "lucide-react";
-import { useFrappeGetCall } from "frappe-react-sdk";
+import { Map, Grid3X3, RefreshCcw } from "lucide-react";
+import { useFrappeAuth, useFrappeGetCall } from "frappe-react-sdk";
 import { Navigation } from "./components/Navigation";
 import { Hero } from "./components/Hero";
 import { CategoryFilters, categories } from "./components/CategoryFilters";
 import { WasteCard } from "./components/WasteCard";
 import { SustainabilityWidget } from "./components/SustainabilityWidget";
 import { Footer } from "./components/Footer";
+import { ProfilePage } from "./components/ProfilePage";
+import { LoginPage } from "./pages/LoginPage";
+import { SignupPage } from "./pages/SignupPage";
+
+type AppPage = "home" | "login" | "signup" | "profile";
 
 type ProductSummary = {
   name: string;
@@ -23,42 +28,38 @@ type FrappeResponse<T> = {
   message: T;
 };
 
-export default function App() {
+function Marketplace({ onProfile }: { onProfile: () => void }) {
   const [viewMode, setViewMode] = useState<"grid" | "map">("grid");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
-  const { data, isLoading, error } = useFrappeGetCall<FrappeResponse<
-    ProductSummary[]
-  >>(
-    "reverto.api.products.list_products",
-    {
-      limit: 50,
-      ...(selectedCategory ? { category: selectedCategory } : {}),
-    },
-  );
+  const { data, isLoading, error } = useFrappeGetCall<
+    FrappeResponse<ProductSummary[]>
+  >("reverto.api.products.list_products", {
+    limit: 50,
+    ...(selectedCategory ? { category: selectedCategory } : {}),
+  });
 
   const products = data?.message ?? [];
 
-  const listingCount = products?.length ?? 0;
+  const listingCount = products.length;
   const sellerCount = useMemo(
     () =>
-      products
-        ? new Set(
-            products
-              .map((p) => p.owner || "")
-              .filter((owner) => owner && owner !== "Guest"),
-          ).size
-        : 0,
+      new Set(
+        products
+          .map((p) => p.owner || "")
+          .filter((o) => o && o !== "Guest"),
+      ).size,
     [products],
   );
 
   const selectedCategoryLabel = selectedCategory
-    ? categories.find((c) => c.value === selectedCategory)?.name ?? selectedCategory
+    ? (categories.find((c) => c.value === selectedCategory)?.name ??
+      selectedCategory)
     : null;
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navigation />
+      <Navigation onProfileClick={onProfile} />
       <Hero listingCount={listingCount} sellerCount={sellerCount} />
       <CategoryFilters
         selectedCategory={selectedCategory}
@@ -118,20 +119,18 @@ export default function App() {
                       Unable to load listings from the server.
                     </p>
                     <p className="text-red-600/80">
-                      {error.message ?? "Please check your Frappe backend URL and try again."}
+                      {error.message ??
+                        "Please check your Frappe backend URL and try again."}
                     </p>
                   </div>
-                ) : products && products.length > 0 ? (
+                ) : products.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                     {products.map((product, index) => {
                       const sellerType =
-                        (product.owner && product.owner !== "Guest"
+                        product.owner && product.owner !== "Guest"
                           ? "Industry"
-                          : "Individual") ?? "Industry";
-
+                          : "Individual";
                       const distanceKm = 1.5 + (index % 7) * 0.9;
-                      const distance = `${distanceKm.toFixed(1)} km`;
-
                       return (
                         <WasteCard
                           key={product.name}
@@ -150,14 +149,14 @@ export default function App() {
                           status={product.status}
                           wasteType={product.category ?? "Other"}
                           sellerType={sellerType}
-                          distance={distance}
+                          distance={`${distanceKm.toFixed(1)} km`}
                         />
                       );
                     })}
                   </div>
                 ) : (
                   <div className="bg-white rounded-xl border border-dashed border-gray-300 p-10 flex flex-col items-center justify-center text-center gap-3">
-                    <div className="flex items-center justify-center w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 mb-2">
+                    <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mb-2">
                       <Grid3X3 className="w-6 h-6" />
                     </div>
                     <h3 className="text-lg font-medium text-gray-900">
@@ -168,7 +167,7 @@ export default function App() {
                     <p className="text-sm text-gray-600 max-w-md">
                       {selectedCategoryLabel
                         ? `There are no available ${selectedCategoryLabel.toLowerCase()} listings right now. Try another category or check back soon.`
-                        : "Once sellers start listing their waste, you'll see available materials here. Check back soon or create a listing if you have waste to offer."}
+                        : "Once sellers start listing their waste, you'll see available materials here."}
                     </p>
                   </div>
                 )}
@@ -197,4 +196,52 @@ export default function App() {
       <Footer />
     </div>
   );
+}
+
+export default function App() {
+  const { currentUser, isLoading } = useFrappeAuth();
+  // null = not yet decided; resolved after the auth check below
+  const [page, setPage] = useState<AppPage | null>(null);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="flex flex-col items-center gap-3 text-emerald-600">
+          <RefreshCcw className="w-8 h-8 animate-spin" />
+          <p className="text-sm text-gray-500">Loading…</p>
+        </div>
+      </div>
+    );
+  }
+
+  const isLoggedIn = Boolean(currentUser && currentUser !== "Guest");
+
+  // Resolve the effective page:
+  // - page is null on first render after loading → infer from session
+  // - page is explicitly set → honour it, EXCEPT force to login if the
+  //   session ended (logout) while on a protected page
+  const effectivePage: AppPage = (() => {
+    if (page === null) return isLoggedIn ? "home" : "login";
+    if (!isLoggedIn && (page === "home" || page === "profile")) return "login";
+    return page;
+  })();
+
+  if (effectivePage === "signup") {
+    return <SignupPage onNavigateToLogin={() => setPage("login")} />;
+  }
+
+  if (effectivePage === "login") {
+    return (
+      <LoginPage
+        onNavigateToSignup={() => setPage("signup")}
+        onSuccess={() => setPage("home")}
+      />
+    );
+  }
+
+  if (effectivePage === "profile") {
+    return <ProfilePage onBack={() => setPage("home")} />;
+  }
+
+  return <Marketplace onProfile={() => setPage("profile")} />;
 }

@@ -1,7 +1,11 @@
 import { Search, MapPin, Bell, User } from "lucide-react";
 import logo from "../../public/reverto_logo1.svg";
 
-export function Navigation() {
+interface NavigationProps {
+  onProfileClick?: () => void;
+}
+
+export function Navigation({ onProfileClick }: NavigationProps) {
   return (
     <nav className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -37,7 +41,11 @@ export function Navigation() {
             </button>
 
             {/* User Avatar */}
-            <button className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center hover:bg-emerald-200 transition-colors">
+            <button
+              onClick={onProfileClick}
+              className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center hover:bg-emerald-200 transition-colors"
+              title="View profile"
+            >
               <User className="w-5 h-5 text-emerald-700" />
             </button>
           </div>
