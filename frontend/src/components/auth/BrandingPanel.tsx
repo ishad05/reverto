@@ -1,10 +1,42 @@
+import { useMemo } from "react";
 import { RefreshCcw, Users } from "lucide-react";
+import { useFrappeGetCall } from "frappe-react-sdk";
+
+type ProductSummary = {
+  name: string;
+  owner?: string;
+};
+
+type FrappeResponse<T> = { message: T };
+
+function useMarketplaceStats() {
+  const { data, isLoading } = useFrappeGetCall<
+    FrappeResponse<ProductSummary[]>
+  >("reverto.api.products.list_products", { limit: 50 });
+
+  const products = data?.message ?? [];
+
+  const listingCount = products.length;
+  const sellerCount = useMemo(
+    () =>
+      new Set(
+        products
+          .map((p) => p.owner ?? "")
+          .filter((o) => o && o !== "Guest"),
+      ).size,
+    [products],
+  );
+
+  return { listingCount, sellerCount, isLoading };
+}
 
 interface BrandingPanelProps {
   variant: "login" | "signup";
 }
 
 export function BrandingPanel({ variant }: BrandingPanelProps) {
+  const { listingCount, sellerCount, isLoading } = useMarketplaceStats();
+
   if (variant === "login") {
     return (
       <div className="flex flex-col items-center justify-center h-full min-h-screen bg-gradient-to-b from-emerald-50 to-green-100 px-12 text-center">
@@ -37,11 +69,19 @@ export function BrandingPanel({ variant }: BrandingPanelProps) {
       </p>
       <div className="flex gap-10">
         <div>
-          <p className="text-3xl font-bold text-emerald-600">124</p>
+          {isLoading ? (
+            <div className="h-9 w-12 bg-emerald-200 rounded animate-pulse mx-auto mb-1" />
+          ) : (
+            <p className="text-3xl font-bold text-emerald-600">{listingCount}</p>
+          )}
           <p className="text-sm text-gray-500 mt-1">Active Listings</p>
         </div>
         <div>
-          <p className="text-3xl font-bold text-emerald-600">12</p>
+          {isLoading ? (
+            <div className="h-9 w-8 bg-emerald-200 rounded animate-pulse mx-auto mb-1" />
+          ) : (
+            <p className="text-3xl font-bold text-emerald-600">{sellerCount}</p>
+          )}
           <p className="text-sm text-gray-500 mt-1">Sellers</p>
         </div>
         <div>
