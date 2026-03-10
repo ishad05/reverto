@@ -66,6 +66,18 @@ When adding new entities, follow the `Product` pattern:
 - Keep validation and business logic in the Python controller.
 - Expose minimal whitelisted methods or REST endpoints needed by the SPA.
 
+- **Public listing API** – `reverto/api/products.py`
+  - Implements a guest‑accessible product listing endpoint:
+
+    ```python
+    @frappe.whitelist(allow_guest=True)
+    def list_products(limit: int = 50) -> list[ProductSummary]:
+        ...
+    ```
+
+  - Returns a concise `ProductSummary` payload (name, product_name, quantity, price_per_quantity, status, product_image).
+  - Uses `ignore_permissions=True` and filters `status = "Available"` so anonymous visitors can browse marketplace listings without logging in.
+
 ---
 
 ### Frontend: React SPA (`frontend/`)
@@ -98,23 +110,33 @@ Important files:
   - Configures Vite with React and Tailwind plugins.
   - Defines `@` alias to `./src` for clean imports.
   - Build base configured to `/assets/reverto/frontend/` so assets resolve correctly when served by Frappe.
+  - Dev server runs on `http://reverto.localhost:5173` and proxies:
+    - `/api`, `/assets`, and `/files` to `http://reverto.localhost:8000` (the Frappe site) to avoid CORS issues.
 
 - `frontend/src/main.tsx`
   - React entry point.
-  - Wraps `App` with `FrappeProvider` from `frappe-react-sdk`:
+  - Wraps `App` with `FrappeProvider` from `frappe-react-sdk`, using `url={window.location.origin}`:
 
-    - This gives the entire SPA access to:
+    - In production (served by Frappe), API calls go directly to the Frappe origin.
+    - In dev, API calls go to the Vite dev server, which forwards them to Frappe via the proxy.
+    - Provides the SPA with:
       - Auth/session info.
-      - Typed data‑fetching hooks (`useFrappeGetDocList`, `useFrappeGetDoc`, `useFrappeCreateDoc`, etc.).
+      - Typed data‑fetching hooks (`useFrappeGetCall`, `useFrappeGetDocList`, `useFrappeGetDoc`, `useFrappeCreateDoc`, etc.).
       - Realtime updates via websockets if enabled.
 
 - `frontend/src/App.tsx`
-  - Top‑level marketplace Shell:
+  - Top‑level marketplace shell:
     - `Navigation`, `Hero`, `CategoryFilters`.
     - A grid of `WasteCard` components representing waste listings.
     - A sidebar `SustainabilityWidget` showcasing impact metrics.
     - `Footer` with site‑wide links.
-  - Currently uses **mock data** (`wasteListings`) to demonstrate the marketplace UX; in future, this will be replaced with data from Frappe using `frappe-react-sdk`.
+  - Fetches product data dynamically using:
+
+    ```ts
+    useFrappeGetCall("reverto.api.products.list_products", { limit: 50 })
+    ```
+
+    and renders loading, error, empty, and non‑empty states.
 
 - `frontend/src/components/ui/*`
   - Collection of reusable UI primitives similar to **shadcn/ui**:

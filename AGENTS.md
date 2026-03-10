@@ -30,8 +30,11 @@ cd frontend && yarn lint
 
 Notes for agents:
 
-- **Local SPA URL**: Vite default (`http://localhost:5173`) unless changed in `frontend/vite.config.ts`.
-- **Frappe + SPA integration**:
+- **Local SPA URL (dev)**: `http://reverto.localhost:5173` (see `frontend/vite.config.ts`).
+- **Dev proxy to Frappe**:
+  - Vite proxies `/api`, `/assets`, and `/files` to `http://reverto.localhost:8000`.
+  - When you call `/api/method/...` from the browser, requests go through the dev server and hit the Frappe site without CORS issues.
+- **Frappe + SPA integration (build/production)**:
   - Built assets are served from `/assets/reverto/frontend/`.
   - `yarn build` copies `reverto/public/frontend/index.html` to `reverto/www/reverto.html`.
   - `hooks.py` defines `website_route_rules` so `/reverto/...` is handled by the SPA.
@@ -118,16 +121,19 @@ See `ARCHITECTURE.md` for a deeper overview of flows and entities.
   - If you add business logic, extend the `Document` subclass in `<doctype_name>.py`.
   - Run `bench --site <site-name> migrate` after schema changes.
 - **APIs for the frontend**:
-  - Prefer **whitelisted Python functions** in a module like `reverto/api.py` or in DocType controllers.
+  - Prefer **whitelisted Python functions** in a module like `reverto/api/*.py` or in DocType controllers.
   - Use Frappe’s permission system instead of manual checks when possible.
   - Expose read/write actions needed by the SPA: browsing products, creating listings, placing orders, etc.
+  - For **public marketplace listing data**, follow the pattern in `reverto/api/products.py`:
+    - Use `@frappe.whitelist(allow_guest=True)` for read‑only endpoints.
+    - Use `ignore_permissions=True` only when it is safe (e.g. public product catalogue data).
 
 ### 2) Frontend: React, shadcn, and Frappe
 
 Frontend code lives under `frontend/`:
 
 - **Entry points**:
-  - `frontend/src/main.tsx` – React root, wrapped in `FrappeProvider` from `frappe-react-sdk`.
+  - `frontend/src/main.tsx` – React root, wrapped in `FrappeProvider` from `frappe-react-sdk` using `url={window.location.origin}` (works in both dev via proxy and production).
   - `frontend/src/App.tsx` – top‑level app shell for the e‑waste marketplace UI.
 - **UI components**:
   - Shared primitives in `frontend/src/components/ui/*` follow the shadcn/ui style (Radix + Tailwind).
@@ -135,8 +141,9 @@ Frontend code lives under `frontend/`:
 - **Accessing Frappe from React** (preferred approach):
   - Use `frappe-react-sdk` hooks instead of ad‑hoc `fetch` calls.
   - Example patterns:
-    - `useFrappeGetDocList('Product', ...)` to list products.
-    - `useFrappeCreateDoc('Product')` to create new listings.
+    - `useFrappeGetCall("reverto.api.products.list_products", { limit })` to fetch the product list (returns `{ message: ProductSummary[] }`).
+    - `useFrappeGetDocList('Product', ...)` or `useFrappeGetDoc('Product', ...)` when you specifically need DocType records and user‑level permissions.
+    - `useFrappeCreateDoc('Product')` (or other DocTypes) to create new listings.
     - `useFrappeAuth()` for login/logout and session handling.
 
 When wiring new features:
