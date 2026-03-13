@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, TypedDict
+from typing import Any, Optional, TypedDict
 
 import frappe
 
@@ -8,11 +8,11 @@ import frappe
 class ProductSummary(TypedDict):
 	name: str
 	product_name: str
-	category: str | None
-	quantity: int | None
-	price_per_quantity: float | None
+	category: Optional[str]
+	quantity: Optional[int]
+	price_per_quantity: Optional[float]
 	status: str
-	product_image: str | None
+	product_image: Optional[str]
 	owner: str
 
 
@@ -25,8 +25,16 @@ def _category_field_exists() -> bool:
 
 
 @frappe.whitelist(allow_guest=True)
-def list_products(limit: int = 50, category: str | None = None) -> list[ProductSummary]:
-	"""Return a concise list of Product docs for the marketplace frontend."""
+def list_products(
+	limit: int = 50,
+	category: Optional[str] = None,
+	search: Optional[str] = None,
+) -> list[ProductSummary]:
+	"""Return a concise list of Product docs for the marketplace frontend.
+
+	Supports optional keyword search on product_name and optional category filter.
+	Both filters are combined with AND logic.
+	"""
 
 	has_category = _category_field_exists()
 
@@ -43,8 +51,12 @@ def list_products(limit: int = 50, category: str | None = None) -> list[ProductS
 		fields.append("category")
 
 	filters: dict[str, Any] = {"status": "Available"}
+
 	if category and has_category:
 		filters["category"] = category
+
+	if search and search.strip():
+		filters["product_name"] = ["like", f"%{search.strip()}%"]
 
 	products: list[dict[str, Any]] = frappe.get_all(
 		"Product",

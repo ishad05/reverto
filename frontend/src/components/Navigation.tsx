@@ -1,11 +1,16 @@
-import { Search, MapPin, Bell, User } from "lucide-react";
+import { Search, MapPin, Bell, User, X, ShoppingCart } from "lucide-react";
 import logo from "../../public/reverto_logo1.svg";
+import { useCart } from "../context/CartContext";
 
 interface NavigationProps {
   onProfileClick?: () => void;
+  searchQuery?: string;
+  onSearchChange?: (query: string) => void;
 }
 
-export function Navigation({ onProfileClick }: NavigationProps) {
+export function Navigation({ onProfileClick, searchQuery = "", onSearchChange }: NavigationProps) {
+  const { totalItems, openCart } = useCart();
+
   return (
     <nav className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -18,16 +23,27 @@ export function Navigation({ onProfileClick }: NavigationProps) {
           {/* Search Bar */}
           <div className="flex-1 max-w-2xl mx-8">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
               <input
                 type="text"
-                placeholder="Search waste by type or keyword"
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                value={searchQuery}
+                onChange={(e) => onSearchChange?.(e.target.value)}
+                placeholder="Search waste by name"
+                className="w-full pl-10 pr-9 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
               />
+              {searchQuery && (
+                <button
+                  onClick={() => onSearchChange?.("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  aria-label="Clear search"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Location Selector */}
+          {/* Right actions */}
           <div className="flex items-center gap-4">
             <button className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
               <MapPin className="w-5 h-5 text-emerald-600" />
@@ -37,7 +53,21 @@ export function Navigation({ onProfileClick }: NavigationProps) {
             {/* Notification Icon */}
             <button className="relative p-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
               <Bell className="w-6 h-6" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-emerald-500 rounded-full"></span>
+              <span className="absolute top-1 right-1 w-2 h-2 bg-emerald-500 rounded-full" />
+            </button>
+
+            {/* Cart Icon */}
+            <button
+              onClick={openCart}
+              className="relative p-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              aria-label="Open cart"
+            >
+              <ShoppingCart className="w-6 h-6" />
+              {totalItems > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-emerald-600 text-white text-[10px] font-bold px-1">
+                  {totalItems > 99 ? "99+" : totalItems}
+                </span>
+              )}
             </button>
 
             {/* User Avatar */}

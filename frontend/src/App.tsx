@@ -1,15 +1,17 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Map, Grid3X3, RefreshCcw } from "lucide-react";
 import { useFrappeAuth, useFrappeGetCall } from "frappe-react-sdk";
 import { Navigation } from "./components/Navigation";
 import { Hero } from "./components/Hero";
 import { CategoryFilters, categories } from "./components/CategoryFilters";
 import { WasteCard } from "./components/WasteCard";
+import { CartDrawer } from "./components/CartDrawer";
 import { SustainabilityWidget } from "./components/SustainabilityWidget";
 import { Footer } from "./components/Footer";
 import { ProfilePage } from "./components/ProfilePage";
 import { LoginPage } from "./pages/LoginPage";
 import { SignupPage } from "./pages/SignupPage";
+import { CartProvider } from "./context/CartContext";
 
 type AppPage = "home" | "login" | "signup" | "profile";
 
@@ -31,12 +33,20 @@ type FrappeResponse<T> = {
 function Marketplace({ onProfile }: { onProfile: () => void }) {
   const [viewMode, setViewMode] = useState<"grid" | "map">("grid");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const { data, isLoading, error } = useFrappeGetCall<
     FrappeResponse<ProductSummary[]>
   >("reverto.api.products.list_products", {
     limit: 50,
     ...(selectedCategory ? { category: selectedCategory } : {}),
+    ...(debouncedSearch ? { search: debouncedSearch } : {}),
   });
 
   const products = data?.message ?? [];
@@ -57,9 +67,22 @@ function Marketplace({ onProfile }: { onProfile: () => void }) {
       selectedCategory)
     : null;
 
+  const headingLabel = (() => {
+    if (debouncedSearch && selectedCategoryLabel)
+      return `"${debouncedSearch}" in ${selectedCategoryLabel}`;
+    if (debouncedSearch) return `Results for "${debouncedSearch}"`;
+    if (selectedCategoryLabel) return `${selectedCategoryLabel} Listings`;
+    return "Available Listings";
+  })();
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navigation onProfileClick={onProfile} />
+      <CartDrawer />
+      <Navigation
+        onProfileClick={onProfile}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+      />
       <Hero listingCount={listingCount} sellerCount={sellerCount} />
       <CategoryFilters
         selectedCategory={selectedCategory}
@@ -68,11 +91,7 @@ function Marketplace({ onProfile }: { onProfile: () => void }) {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-gray-900">
-            {selectedCategoryLabel
-              ? `${selectedCategoryLabel} Listings`
-              : "Available Listings"}
-          </h2>
+          <h2 className="text-gray-900">{headingLabel}</h2>
 
           <div className="flex items-center gap-2 bg-white border border-gray-300 rounded-lg p-1">
             <button
@@ -134,6 +153,7 @@ function Marketplace({ onProfile }: { onProfile: () => void }) {
                       return (
                         <WasteCard
                           key={product.name}
+                          productId={product.name}
                           image={product.product_image || ""}
                           title={product.product_name}
                           quantity={
@@ -141,11 +161,13 @@ function Marketplace({ onProfile }: { onProfile: () => void }) {
                               ? `${product.quantity} kg`
                               : undefined
                           }
+                          rawQuantityKg={product.quantity ?? undefined}
                           pricePerQuantity={
                             product.price_per_quantity != null
                               ? `₹${product.price_per_quantity}/kg`
                               : undefined
                           }
+                          rawPricePerKg={product.price_per_quantity ?? undefined}
                           status={product.status}
                           wasteType={product.category ?? "Other"}
                           sellerType={sellerType}
@@ -160,14 +182,16 @@ function Marketplace({ onProfile }: { onProfile: () => void }) {
                       <Grid3X3 className="w-6 h-6" />
                     </div>
                     <h3 className="text-lg font-medium text-gray-900">
-                      {selectedCategoryLabel
-                        ? `No listings in ${selectedCategoryLabel}`
-                        : "No listings yet"}
+                      No listings found
                     </h3>
                     <p className="text-sm text-gray-600 max-w-md">
-                      {selectedCategoryLabel
-                        ? `There are no available ${selectedCategoryLabel.toLowerCase()} listings right now. Try another category or check back soon.`
-                        : "Once sellers start listing their waste, you'll see available materials here."}
+                      {debouncedSearch && selectedCategoryLabel
+                        ? `No ${selectedCategoryLabel.toLowerCase()} listings match "${debouncedSearch}". Try a different keyword or category.`
+                        : debouncedSearch
+                          ? `No listings match "${debouncedSearch}". Try a different keyword or clear the search.`
+                          : selectedCategoryLabel
+                            ? `There are no available ${selectedCategoryLabel.toLowerCase()} listings right now. Try another category or check back soon.`
+                            : "Once sellers start listing their waste, you'll see available materials here."}
                     </p>
                   </div>
                 )}
@@ -243,5 +267,9 @@ export default function App() {
     return <ProfilePage onBack={() => setPage("home")} />;
   }
 
-  return <Marketplace onProfile={() => setPage("profile")} />;
+  return (
+    <CartProvider>
+      <Marketplace onProfile={() => setPage("profile")} />
+    </CartProvider>
+  );
 }
