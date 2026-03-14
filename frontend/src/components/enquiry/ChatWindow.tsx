@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Send, IndianRupee, Check, X, Loader2, Star } from "lucide-react";
+import { Send, IndianRupee, Check, X, Loader2, Star, CreditCard } from "lucide-react";
 import {
   useFrappeAuth,
   useFrappeGetCall,
@@ -8,6 +8,7 @@ import {
 } from "frappe-react-sdk";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
+import { PaymentModal } from "../PaymentModal";
 
 const GST = 0.18;
 
@@ -137,6 +138,7 @@ export function ChatWindow({ enquiryId }: { enquiryId: string }) {
   const [text, setText] = useState("");
   const [priceInput, setPriceInput] = useState("");
   const [showPriceInput, setShowPriceInput] = useState(false);
+  const [payOpen, setPayOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const { data, mutate, isLoading } = useFrappeGetCall<
@@ -478,15 +480,56 @@ export function ChatWindow({ enquiryId }: { enquiryId: string }) {
         </div>
       ) : (
         <div className="px-5 py-4 border-t border-gray-100 space-y-3">
-          <p className="text-sm text-emerald-700 font-medium text-center">
-            ✓ Deal accepted at ₹{enquiry.agreed_price_per_kg}/kg · Total:{" "}
-            {fmt((enquiry.agreed_price_per_kg ?? 0) * enquiry.quantity_kg * (1 + GST))}
-          </p>
-          {isBuyer && (
-            <RateSellerWidget enquiryId={enquiry.name} />
+          {enquiry.status === "Accepted" ? (
+            <>
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 space-y-2">
+                <p className="text-sm text-emerald-800 font-semibold text-center">
+                  Deal Agreed
+                </p>
+                <div className="flex justify-between text-xs text-gray-600">
+                  <span>{enquiry.quantity_kg} kg × ₹{enquiry.agreed_price_per_kg}/kg</span>
+                  <span>Subtotal: {fmt((enquiry.agreed_price_per_kg ?? 0) * enquiry.quantity_kg)}</span>
+                </div>
+                <div className="flex justify-between text-xs text-gray-600">
+                  <span>GST (18%)</span>
+                  <span>{fmt((enquiry.agreed_price_per_kg ?? 0) * enquiry.quantity_kg * GST)}</span>
+                </div>
+                <div className="flex justify-between text-sm font-bold text-emerald-700 pt-1 border-t border-emerald-200">
+                  <span>Total</span>
+                  <span>{fmt((enquiry.agreed_price_per_kg ?? 0) * enquiry.quantity_kg * (1 + GST))}</span>
+                </div>
+              </div>
+
+              <Button
+                className="w-full bg-emerald-600 hover:bg-emerald-700 gap-2"
+                onClick={() => setPayOpen(true)}
+              >
+                <CreditCard className="w-4 h-4" />
+                Proceed to Pay
+              </Button>
+
+              {isBuyer && <RateSellerWidget enquiryId={enquiry.name} />}
+            </>
+          ) : (
+            <p className="text-sm text-gray-500 font-medium text-center">
+              This enquiry is closed.
+            </p>
           )}
         </div>
       )}
+
+      {/* Payment modal */}
+      <PaymentModal
+        open={payOpen}
+        onClose={() => setPayOpen(false)}
+        enquiryId={enquiry.name}
+        lines={[{
+          productName: enquiry.product_name,
+          quantityKg: enquiry.quantity_kg,
+          pricePerKg: enquiry.agreed_price_per_kg ?? enquiry.original_price_per_kg,
+        }]}
+        onSuccess={() => { setPayOpen(false); mutate(); }}
+      />
     </div>
   );
 }

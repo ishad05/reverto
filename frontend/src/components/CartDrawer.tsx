@@ -10,6 +10,7 @@ import {
 import { Button } from "./ui/button";
 import { Separator } from "./ui/seperator";
 import { EnquiryModal, EnquiryCreating, type EnquiryEntry } from "./enquiry/EnquiryModal";
+import { PaymentModal, type PaymentLine } from "./PaymentModal";
 
 const fmt = (amount: number) =>
   new Intl.NumberFormat("en-IN", {
@@ -35,6 +36,15 @@ export function CartDrawer() {
     phase: "idle" | "creating" | "open";
     enquiries: EnquiryEntry[];
   }>({ phase: "idle", enquiries: [] });
+
+  const [payOpen, setPayOpen] = useState(false);
+
+  const cartLines: PaymentLine[] = items.map((item) => ({
+    productName: item.title,
+    quantityKg: item.quantityKg,
+    pricePerKg: item.pricePerKg,
+    image: item.image,
+  }));
 
   const handleProceedToEnquiry = async () => {
     if (!items.length) return;
@@ -260,11 +270,20 @@ export function CartDrawer() {
               </p>
 
               <Button
-                className="w-full mt-1 bg-emerald-600 hover:bg-emerald-700"
+                className="w-full mt-1 bg-emerald-600 hover:bg-emerald-700 gap-2"
+                size="lg"
+                onClick={() => { closeCart(); setPayOpen(true); }}
+              >
+                Proceed to Pay
+              </Button>
+
+              <Button
+                variant="outline"
+                className="w-full border-emerald-300 text-emerald-700 hover:bg-emerald-50"
                 size="lg"
                 onClick={handleProceedToEnquiry}
               >
-                Proceed to Enquiry
+                Negotiate with Seller
               </Button>
             </div>
           )}
@@ -282,6 +301,14 @@ export function CartDrawer() {
           enquiries={enquiryState.enquiries}
         />
       )}
+
+      {/* Direct payment modal */}
+      <PaymentModal
+        open={payOpen}
+        onClose={() => setPayOpen(false)}
+        lines={cartLines}
+        onSuccess={() => { clearCart(); }}
+      />
     </>
   );
 }

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MessageSquare, ChevronRight, Loader2, PackageOpen } from "lucide-react";
+import { MessageSquare, ChevronRight, Loader2, PackageOpen, CreditCard } from "lucide-react";
 import { useFrappeGetCall } from "frappe-react-sdk";
 import {
   Sheet,
@@ -9,6 +9,7 @@ import {
 } from "./ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { ChatWindow } from "./enquiry/ChatWindow";
+import { PaymentModal, type PaymentLine } from "./PaymentModal";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -67,6 +68,7 @@ interface BuyerEnquiriesDrawerProps {
 
 export function BuyerEnquiriesDrawer({ isOpen, onClose }: BuyerEnquiriesDrawerProps) {
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
+  const [payEnquiry, setPayEnquiry] = useState<BuyerEnquiry | null>(null);
 
   const { data, isLoading, mutate } = useFrappeGetCall<FrappeResp<BuyerEnquiry[]>>(
     "reverto.api.enquiry.get_buyer_enquiries",
@@ -125,45 +127,57 @@ export function BuyerEnquiriesDrawer({ isOpen, onClose }: BuyerEnquiriesDrawerPr
             ) : (
               <div className="divide-y divide-gray-100">
                 {enquiries.map((enq) => (
-                  <button
-                    key={enq.name}
-                    onClick={() => setActiveChatId(enq.name)}
-                    className="w-full text-left px-6 py-4 hover:bg-gray-50 transition-colors"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-sm font-semibold text-gray-900 line-clamp-1">
-                            {enq.product_name}
-                          </p>
-                          <span
-                            className={`flex-shrink-0 px-2 py-0.5 text-xs font-medium rounded-full border ${
-                              BADGE[enq.status] ?? "bg-gray-100 text-gray-600"
-                            }`}
-                          >
-                            {enq.status}
-                          </span>
-                        </div>
-                        <p className="text-xs text-gray-500 mt-0.5">
-                          {enq.quantity_kg} kg ·{" "}
-                          {enq.agreed_price_per_kg ? (
-                            <span className="text-emerald-600 font-medium">
-                              Agreed: {fmt(enq.agreed_price_per_kg)}/kg
+                  <div key={enq.name} className="px-6 py-4 hover:bg-gray-50 transition-colors">
+                    <button
+                      onClick={() => setActiveChatId(enq.name)}
+                      className="w-full text-left"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-sm font-semibold text-gray-900 line-clamp-1">
+                              {enq.product_name}
+                            </p>
+                            <span
+                              className={`flex-shrink-0 px-2 py-0.5 text-xs font-medium rounded-full border ${
+                                BADGE[enq.status] ?? "bg-gray-100 text-gray-600"
+                              }`}
+                            >
+                              {enq.status}
                             </span>
-                          ) : (
-                            <span>{fmt(enq.original_price_per_kg)}/kg</span>
-                          )}
-                        </p>
-                        <p className="text-xs text-gray-400 mt-0.5">
-                          Seller: {enq.seller}
-                          {enq.creation && (
-                            <span className="ml-2">· {timeAgo(enq.creation)}</span>
-                          )}
-                        </p>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            {enq.quantity_kg} kg ·{" "}
+                            {enq.agreed_price_per_kg ? (
+                              <span className="text-emerald-600 font-medium">
+                                Agreed: {fmt(enq.agreed_price_per_kg)}/kg
+                              </span>
+                            ) : (
+                              <span>{fmt(enq.original_price_per_kg)}/kg</span>
+                            )}
+                          </p>
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            Seller: {enq.seller}
+                            {enq.creation && (
+                              <span className="ml-2">· {timeAgo(enq.creation)}</span>
+                            )}
+                          </p>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
                       </div>
-                      <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                    </div>
-                  </button>
+                    </button>
+
+                    {/* Pay Now for accepted deals */}
+                    {enq.status === "Accepted" && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setPayEnquiry(enq); }}
+                        className="mt-2 flex items-center gap-1.5 text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg px-3 py-1.5 transition-colors"
+                      >
+                        <CreditCard className="w-3.5 h-3.5" />
+                        Pay Now — {fmt((enq.agreed_price_per_kg ?? enq.original_price_per_kg) * enq.quantity_kg * 1.18)}
+                      </button>
+                    )}
+                  </div>
                 ))}
               </div>
             )}
@@ -187,6 +201,21 @@ export function BuyerEnquiriesDrawer({ isOpen, onClose }: BuyerEnquiriesDrawerPr
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Payment modal for accepted enquiries */}
+      {payEnquiry && (
+        <PaymentModal
+          open={!!payEnquiry}
+          onClose={() => setPayEnquiry(null)}
+          enquiryId={payEnquiry.name}
+          lines={[{
+            productName: payEnquiry.product_name,
+            quantityKg: payEnquiry.quantity_kg,
+            pricePerKg: payEnquiry.agreed_price_per_kg ?? payEnquiry.original_price_per_kg,
+          } as PaymentLine]}
+          onSuccess={() => { setPayEnquiry(null); mutate(); }}
+        />
+      )}
     </>
   );
 }

@@ -239,6 +239,42 @@ def get_buyer_enquiries() -> list:
 
 
 @frappe.whitelist()
+def confirm_payment(enquiry_id: str) -> dict:
+	"""Mark an accepted enquiry as paid/closed and the product as Sold."""
+	enquiry = frappe.get_doc("Reverto Enquiry", enquiry_id)
+	_assert_access(enquiry)
+
+	if enquiry.status != "Accepted":
+		frappe.throw("Payment can only be confirmed for an accepted enquiry.")
+
+	enquiry.status = "Closed"
+	enquiry.save(ignore_permissions=True)
+
+	# Mark the product as Sold
+	if frappe.db.exists("Product", enquiry.product):
+		product = frappe.get_doc("Product", enquiry.product)
+		product.status = "Sold"
+		product.save(ignore_permissions=True)
+
+	_add_message(enquiry_id, "system", "Payment confirmed. The deal is now complete.")
+	frappe.db.commit()
+
+	# Notify both parties
+	frappe.publish_realtime(
+		event=f"enquiry_{enquiry_id}",
+		message={"type": "payment_confirmed"},
+		user=enquiry.buyer,
+	)
+	frappe.publish_realtime(
+		event=f"enquiry_{enquiry_id}",
+		message={"type": "payment_confirmed"},
+		user=enquiry.seller,
+	)
+
+	return {"success": True}
+
+
+@frappe.whitelist()
 def get_seller_enquiries() -> list:
 	return frappe.get_all(
 		"Reverto Enquiry",
