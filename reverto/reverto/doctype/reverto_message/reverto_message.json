@@ -1,0 +1,80 @@
+{
+ "autoname": "MSG.####",
+ "creation": "2026-03-13 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "enquiry",
+  "sender",
+  "sender_name",
+  "message_text",
+  "message_type",
+  "proposed_price_per_kg",
+  "is_read"
+ ],
+ "fields": [
+  {
+   "fieldname": "enquiry",
+   "fieldtype": "Link",
+   "label": "Enquiry",
+   "options": "Reverto Enquiry"
+  },
+  {
+   "fieldname": "sender",
+   "fieldtype": "Link",
+   "label": "Sender",
+   "options": "User"
+  },
+  {
+   "fieldname": "sender_name",
+   "fieldtype": "Data",
+   "label": "Sender Name"
+  },
+  {
+   "fieldname": "message_text",
+   "fieldtype": "Long Text",
+   "label": "Message"
+  },
+  {
+   "default": "message",
+   "fieldname": "message_type",
+   "fieldtype": "Select",
+   "label": "Message Type",
+   "options": "message\nprice_offer\nprice_accepted\nprice_rejected\nsystem"
+  },
+  {
+   "fieldname": "proposed_price_per_kg",
+   "fieldtype": "Currency",
+   "label": "Proposed Price /kg"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_read",
+   "fieldtype": "Check",
+   "label": "Read"
+  }
+ ],
+ "modified": "2026-03-13 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "ReVerto",
+ "name": "Reverto Message",
+ "naming_rule": "Random",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "role": "System Manager",
+   "write": 1
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "role": "All",
+   "write": 1
+  }
+ ],
+ "sort_field": "creation",
+ "sort_order": "ASC"
+}

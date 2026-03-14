@@ -11,9 +11,11 @@ import { Footer } from "./components/Footer";
 import { ProfilePage } from "./components/ProfilePage";
 import { LoginPage } from "./pages/LoginPage";
 import { SignupPage } from "./pages/SignupPage";
+import { SellerDashboard } from "./pages/SellerDashboard";
 import { CartProvider } from "./context/CartContext";
+import { BuyerEnquiriesDrawer } from "./components/BuyerEnquiriesDrawer";
 
-type AppPage = "home" | "login" | "signup" | "profile";
+type AppPage = "home" | "login" | "signup" | "profile" | "seller-dashboard";
 
 type ProductSummary = {
   name: string;
@@ -30,11 +32,32 @@ type FrappeResponse<T> = {
   message: T;
 };
 
-function Marketplace({ onProfile }: { onProfile: () => void }) {
+// ---------------------------------------------------------------------------
+// Marketplace (buyers + sellers browsing)
+// ---------------------------------------------------------------------------
+
+interface MarketplaceProps {
+  onProfile: () => void;
+  sellerTabs?: {
+    onMyListings: () => void;
+  };
+}
+
+function Marketplace({ onProfile, sellerTabs }: MarketplaceProps) {
   const [viewMode, setViewMode] = useState<"grid" | "map">("grid");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [enquiriesOpen, setEnquiriesOpen] = useState(false);
+
+  const { data: enquiriesData } = useFrappeGetCall<
+    FrappeResponse<{ status: string }[]>
+  >("reverto.api.enquiry.get_buyer_enquiries", {}, undefined, {
+    refreshInterval: 15000,
+  });
+  const enquiryBadge = (enquiriesData?.message ?? []).filter(
+    (e) => e.status === "Open" || e.status === "Negotiating",
+  ).length;
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 300);
@@ -78,10 +101,25 @@ function Marketplace({ onProfile }: { onProfile: () => void }) {
   return (
     <div className="min-h-screen bg-gray-50">
       <CartDrawer />
+      <BuyerEnquiriesDrawer
+        isOpen={enquiriesOpen}
+        onClose={() => setEnquiriesOpen(false)}
+      />
       <Navigation
         onProfileClick={onProfile}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
+        onEnquiriesClick={() => setEnquiriesOpen(true)}
+        enquiryBadge={enquiryBadge}
+        sellerTabs={
+          sellerTabs
+            ? {
+                currentTab: "marketplace",
+                onListings: sellerTabs.onMyListings,
+                onMarketplace: () => {},
+              }
+            : undefined
+        }
       />
       <Hero listingCount={listingCount} sellerCount={sellerCount} />
       <CategoryFilters
@@ -222,10 +260,26 @@ function Marketplace({ onProfile }: { onProfile: () => void }) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// App root
+// ---------------------------------------------------------------------------
+
 export default function App() {
-  const { currentUser, isLoading } = useFrappeAuth();
-  // null = not yet decided; resolved after the auth check below
+  const { currentUser, isLoading: authLoading } = useFrappeAuth();
   const [page, setPage] = useState<AppPage | null>(null);
+
+  const isLoggedIn = Boolean(currentUser && currentUser !== "Guest");
+
+  // Fetch account type once authenticated
+  const { data: profileData, isLoading: profileLoading } =
+    useFrappeGetCall<FrappeResponse<{ account_type: string; first_name: string }>>(
+      "reverto.api.auth.get_user_profile",
+      {},
+      isLoggedIn ? undefined : null, // skip fetch for guests
+    );
+
+  // Show loading until both auth and profile are resolved
+  const isLoading = authLoading || (isLoggedIn && profileLoading);
 
   if (isLoading) {
     return (
@@ -238,15 +292,16 @@ export default function App() {
     );
   }
 
-  const isLoggedIn = Boolean(currentUser && currentUser !== "Guest");
+  const accountType = profileData?.message?.account_type ?? "Buyer";
+  const firstName = profileData?.message?.first_name ?? "";
+  const isSeller = accountType === "Seller";
 
-  // Resolve the effective page:
-  // - page is null on first render after loading → infer from session
-  // - page is explicitly set → honour it, EXCEPT force to login if the
-  //   session ended (logout) while on a protected page
+  const defaultPage: AppPage = isSeller ? "seller-dashboard" : "home";
+
   const effectivePage: AppPage = (() => {
-    if (page === null) return isLoggedIn ? "home" : "login";
-    if (!isLoggedIn && (page === "home" || page === "profile")) return "login";
+    if (page === null) return isLoggedIn ? defaultPage : "login";
+    if (!isLoggedIn && (page === "home" || page === "profile" || page === "seller-dashboard"))
+      return "login";
     return page;
   })();
 
@@ -258,18 +313,31 @@ export default function App() {
     return (
       <LoginPage
         onNavigateToSignup={() => setPage("signup")}
-        onSuccess={() => setPage("home")}
+        onSuccess={() => setPage(null)} // re-derive from profile
       />
     );
   }
 
   if (effectivePage === "profile") {
-    return <ProfilePage onBack={() => setPage("home")} />;
+    return <ProfilePage onBack={() => setPage(defaultPage)} />;
   }
 
   return (
     <CartProvider>
-      <Marketplace onProfile={() => setPage("profile")} />
+      {effectivePage === "seller-dashboard" ? (
+        <SellerDashboard
+          firstName={firstName}
+          onProfile={() => setPage("profile")}
+          onBrowseMarketplace={() => setPage("home")}
+        />
+      ) : (
+        <Marketplace
+          onProfile={() => setPage("profile")}
+          sellerTabs={
+            isSeller ? { onMyListings: () => setPage("seller-dashboard") } : undefined
+          }
+        />
+      )}
     </CartProvider>
   );
 }

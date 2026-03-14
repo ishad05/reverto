@@ -1,0 +1,94 @@
+{
+ "actions": [],
+ "autoname": "field:seller",
+ "creation": "2026-03-13 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "seller",
+  "enterprise_name",
+  "location",
+  "profile_image",
+  "about",
+  "avg_rating",
+  "rating_count"
+ ],
+ "fields": [
+  {
+   "fieldname": "seller",
+   "fieldtype": "Link",
+   "label": "Seller",
+   "options": "User",
+   "reqd": 1,
+   "unique": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "enterprise_name",
+   "fieldtype": "Data",
+   "label": "Enterprise / Company Name",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "location",
+   "fieldtype": "Data",
+   "label": "Location (City / Region)"
+  },
+  {
+   "fieldname": "profile_image",
+   "fieldtype": "Attach Image",
+   "label": "Profile Image"
+  },
+  {
+   "fieldname": "about",
+   "fieldtype": "Long Text",
+   "label": "About"
+  },
+  {
+   "fieldname": "avg_rating",
+   "fieldtype": "Float",
+   "label": "Average Rating",
+   "read_only": 1,
+   "default": "0"
+  },
+  {
+   "fieldname": "rating_count",
+   "fieldtype": "Int",
+   "label": "Rating Count",
+   "read_only": 1,
+   "default": "0"
+  }
+ ],
+ "links": [],
+ "modified": "2026-03-13 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "ReVerto",
+ "name": "Reverto Seller Profile",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "role": "All",
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 0
+}

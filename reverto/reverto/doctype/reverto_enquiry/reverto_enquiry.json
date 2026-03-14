@@ -1,0 +1,86 @@
+{
+ "autoname": "ENQ.####",
+ "creation": "2026-03-13 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "product",
+  "product_name",
+  "buyer",
+  "seller",
+  "quantity_kg",
+  "original_price_per_kg",
+  "agreed_price_per_kg",
+  "status"
+ ],
+ "fields": [
+  {
+   "fieldname": "product",
+   "fieldtype": "Link",
+   "label": "Product",
+   "options": "Product"
+  },
+  {
+   "fieldname": "product_name",
+   "fieldtype": "Data",
+   "label": "Product Name"
+  },
+  {
+   "fieldname": "buyer",
+   "fieldtype": "Link",
+   "label": "Buyer",
+   "options": "User"
+  },
+  {
+   "fieldname": "seller",
+   "fieldtype": "Link",
+   "label": "Seller",
+   "options": "User"
+  },
+  {
+   "fieldname": "quantity_kg",
+   "fieldtype": "Int",
+   "label": "Quantity (kg)"
+  },
+  {
+   "fieldname": "original_price_per_kg",
+   "fieldtype": "Currency",
+   "label": "Original Price /kg"
+  },
+  {
+   "fieldname": "agreed_price_per_kg",
+   "fieldtype": "Currency",
+   "label": "Agreed Price /kg"
+  },
+  {
+   "default": "Open",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Open\nNegotiating\nAccepted\nRejected\nClosed"
+  }
+ ],
+ "modified": "2026-03-13 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "ReVerto",
+ "name": "Reverto Enquiry",
+ "naming_rule": "Random",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "role": "System Manager",
+   "write": 1
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "role": "All",
+   "write": 1
+  }
+ ],
+ "sort_field": "creation",
+ "sort_order": "DESC"
+}

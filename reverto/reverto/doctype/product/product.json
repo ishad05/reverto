@@ -49,7 +49,7 @@
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
-   "options": "Available\nSold"
+   "options": "Available\nPending\nSold"
   },
   {
    "fieldname": "product_image",
