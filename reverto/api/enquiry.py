@@ -299,6 +299,79 @@ def get_my_orders() -> list:
 	return orders
 
 
+def _load_co2_factors() -> tuple[dict[str, float], float]:
+	"""
+	Read all CO2 Factor records from the DB in a single query.
+	Returns (factors_dict, default_fallback).
+	Falls back to 1.0 if the DocType is empty or not yet migrated.
+	"""
+	rows = frappe.get_all(
+		"CO2 Factor",
+		fields=["category", "factor_kg_co2_per_kg"],
+		ignore_permissions=True,
+	)
+	factors = {r["category"]: float(r["factor_kg_co2_per_kg"]) for r in rows if r.get("category")}
+	default = factors.get("Other", 1.0)
+	return factors, default
+
+
+@frappe.whitelist()
+def get_sustainability_stats() -> dict:
+	"""
+	Return CO₂ & waste-diversion stats for the current user (as buyer + seller)
+	plus community-wide totals across all closed enquiries.
+	CO₂ factors are loaded from the 'CO2 Factor' DocType — editable via Frappe desk.
+	"""
+	user = frappe.session.user
+
+	# Load factors once — one DB round-trip for the entire calculation
+	factors, default_factor = _load_co2_factors()
+
+	# ── All closed enquiries in one pass ─────────────────────────────────────
+	all_rows = frappe.get_all(
+		"Reverto Enquiry",
+		filters={"status": "Closed"},
+		fields=["product", "quantity_kg", "buyer", "seller"],
+		ignore_permissions=True,
+	)
+
+	# Collect unique product IDs and resolve categories in one query
+	product_ids = list({r["product"] for r in all_rows if r.get("product")})
+	category_map: dict[str, str] = {}
+	if product_ids:
+		product_rows = frappe.get_all(
+			"Product",
+			filters={"name": ["in", product_ids]},
+			fields=["name", "category"],
+			ignore_permissions=True,
+		)
+		category_map = {p["name"]: (p.get("category") or "") for p in product_rows}
+
+	personal_waste_kg: float = 0.0
+	personal_co2_kg: float = 0.0
+	community_waste_kg: float = 0.0
+	community_co2_kg: float = 0.0
+
+	for row in all_rows:
+		qty = float(row.get("quantity_kg") or 0)
+		category = category_map.get(row.get("product") or "", "")
+		factor = factors.get(category, default_factor)
+
+		community_waste_kg += qty
+		community_co2_kg += qty * factor
+
+		if row.get("buyer") == user or row.get("seller") == user:
+			personal_waste_kg += qty
+			personal_co2_kg += qty * factor
+
+	return {
+		"personal_waste_kg": round(personal_waste_kg, 2),
+		"personal_co2_kg": round(personal_co2_kg, 2),
+		"community_waste_kg": round(community_waste_kg, 2),
+		"community_co2_kg": round(community_co2_kg, 2),
+	}
+
+
 @frappe.whitelist()
 def get_seller_enquiries() -> list:
 	return frappe.get_all(

@@ -1,0 +1,74 @@
+[
+  {
+    "doctype": "CO2 Factor",
+    "name": "Textile",
+    "category": "Textile",
+    "factor_kg_co2_per_kg": 3.6,
+    "source": "WRAP Textiles Market Situation Report (2023)",
+    "notes": "Avoided virgin fibre production (cotton, polyester, wool blended average). Pure cotton is ~5.0, synthetics ~2.7. Blended fabrics reduce this figure."
+  },
+  {
+    "doctype": "CO2 Factor",
+    "name": "E-waste",
+    "category": "E-waste",
+    "factor_kg_co2_per_kg": 2.0,
+    "source": "EPA WARM Model v16 \u2014 Electronics category (2023)",
+    "notes": "Avoided primary smelting of copper, gold, palladium, and other rare metals. Varies widely by device type; PCBs are significantly higher."
+  },
+  {
+    "doctype": "CO2 Factor",
+    "name": "Metal",
+    "category": "Metal",
+    "factor_kg_co2_per_kg": 1.8,
+    "source": "World Steel Association \u2014 Steel Recycling Factsheet (2023)",
+    "notes": "Assumes a steel/iron mix. Aluminium is approximately 8.0 kg CO\u2082/kg. Copper is approximately 3.5. Update this category or split into sub-categories for accuracy."
+  },
+  {
+    "doctype": "CO2 Factor",
+    "name": "Plastic",
+    "category": "Plastic",
+    "factor_kg_co2_per_kg": 1.5,
+    "source": "WRAP Plastic Market Situation Report (2024)",
+    "notes": "Blended average across PET, HDPE, LDPE, PP. PET bottles are approximately 1.9. Mixed/contaminated plastic streams are lower at approximately 0.8."
+  },
+  {
+    "doctype": "CO2 Factor",
+    "name": "Paper",
+    "category": "Paper",
+    "factor_kg_co2_per_kg": 0.9,
+    "source": "WRAP Paper & Cardboard Recycling Evidence (2023)",
+    "notes": "Avoided pulp production and deforestation emissions. Includes avoided methane from paper in landfill. Cardboard is slightly higher at approximately 1.0."
+  },
+  {
+    "doctype": "CO2 Factor",
+    "name": "Organic",
+    "category": "Organic",
+    "factor_kg_co2_per_kg": 0.6,
+    "source": "IPCC AR6 \u2014 Waste chapter; Carbon Trust composting LCA",
+    "notes": "Avoided methane (CH4) from anaerobic decomposition in landfill, converted to CO\u2082 equivalent at 28\u00d7 GWP (100yr). Assumes composting or biogas as the alternative."
+  },
+  {
+    "doctype": "CO2 Factor",
+    "name": "Construction",
+    "category": "Construction",
+    "factor_kg_co2_per_kg": 0.4,
+    "source": "BRE (Building Research Establishment) \u2014 ICE Database v3",
+    "notes": "Blended average for concrete rubble, brick, and inert fill. Timber offcuts are approximately 0.9. Assumes crushed aggregate reuse displacing quarried material."
+  },
+  {
+    "doctype": "CO2 Factor",
+    "name": "Glass",
+    "category": "Glass",
+    "factor_kg_co2_per_kg": 0.3,
+    "source": "British Glass \u2014 CO2 Emissions Reduction by Glass Recycling (2023)",
+    "notes": "Avoided silica sand extraction and high-temperature furnace energy. Lower than other materials because glass can only be recycled into lower-value cullet at scale."
+  },
+  {
+    "doctype": "CO2 Factor",
+    "name": "Other",
+    "category": "Other",
+    "factor_kg_co2_per_kg": 1.0,
+    "source": "Conservative generic default \u2014 update when category is specified",
+    "notes": "Fallback for products without a recognised category. Replace with a category-specific factor whenever possible."
+  }
+]

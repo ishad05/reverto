@@ -252,3 +252,9 @@ app_license = "mit"
 
 website_route_rules =[ {"from_route": "/reverto/<path:reverto>", "to_route": "reverto"},]
 
+# Fixtures — exported/imported by `bench migrate` and `bench export-fixtures`
+# Add {"dt": "CO2 Factor"} filter to restrict to specific records if needed.
+fixtures = [
+	{"dt": "CO2 Factor"},
+]
+

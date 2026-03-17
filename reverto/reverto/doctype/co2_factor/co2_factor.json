@@ -1,0 +1,77 @@
+{
+ "actions": [],
+ "autoname": "field:category",
+ "creation": "2026-03-17 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "category",
+  "factor_kg_co2_per_kg",
+  "source",
+  "notes"
+ ],
+ "fields": [
+  {
+   "fieldname": "category",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Waste Category",
+   "reqd": 1,
+   "unique": 1,
+   "description": "Must match exactly the category values used in the Product DocType"
+  },
+  {
+   "fieldname": "factor_kg_co2_per_kg",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "CO\u2082 Factor (kg CO\u2082 per kg waste)",
+   "reqd": 1,
+   "non_negative": 1,
+   "description": "Kilograms of CO\u2082 emission avoided per kilogram of waste recycled or traded on this platform"
+  },
+  {
+   "fieldname": "source",
+   "fieldtype": "Data",
+   "label": "Source / Reference",
+   "description": "Citation for this factor (e.g. WRAP 2024, EPA WARM v16, Carbon Trust LCA)"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes",
+   "description": "Assumptions, caveats, or sub-category breakdown for this factor"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-03-17 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "ReVerto",
+ "name": "CO2 Factor",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "All"
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "category",
+ "sort_order": "ASC",
+ "states": [],
+ "title_field": "category",
+ "track_changes": 1
+}
