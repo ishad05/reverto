@@ -46,6 +46,7 @@ export function PaymentModal({
 }: PaymentModalProps) {
   const [phase, setPhase] = useState<"review" | "processing" | "success">("review");
   const [error, setError] = useState<string | null>(null);
+  const [paidTotal, setPaidTotal] = useState<number>(0);
 
   const subtotal = lines.reduce((s, l) => s + l.pricePerKg * l.quantityKg, 0);
   const gst = subtotal * GST;
@@ -81,6 +82,7 @@ export function PaymentModal({
         }
       }
 
+      setPaidTotal(grandTotal);
       setPhase("success");
       onSuccess?.();
     } catch (err) {
@@ -113,7 +115,7 @@ export function PaymentModal({
             </div>
             <div className="bg-gray-50 rounded-xl px-6 py-3 text-center border border-gray-100">
               <p className="text-xs text-gray-500 mb-0.5">Total paid</p>
-              <p className="text-2xl font-bold text-emerald-700">{fmt(grandTotal)}</p>
+              <p className="text-2xl font-bold text-emerald-700">{fmt(paidTotal)}</p>
               <p className="text-xs text-gray-400 mt-0.5">incl. 18% GST</p>
             </div>
             <Button

@@ -213,7 +213,7 @@ export function BuyerEnquiriesDrawer({ isOpen, onClose }: BuyerEnquiriesDrawerPr
             quantityKg: payEnquiry.quantity_kg,
             pricePerKg: payEnquiry.agreed_price_per_kg ?? payEnquiry.original_price_per_kg,
           } as PaymentLine]}
-          onSuccess={() => { setPayEnquiry(null); mutate(); }}
+          onSuccess={() => { mutate(); }}
         />
       )}
     </>

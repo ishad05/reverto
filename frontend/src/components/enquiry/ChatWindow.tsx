@@ -528,7 +528,7 @@ export function ChatWindow({ enquiryId }: { enquiryId: string }) {
           quantityKg: enquiry.quantity_kg,
           pricePerKg: enquiry.agreed_price_per_kg ?? enquiry.original_price_per_kg,
         }]}
-        onSuccess={() => { setPayOpen(false); mutate(); }}
+        onSuccess={() => { mutate(); }}
       />
     </div>
   );
