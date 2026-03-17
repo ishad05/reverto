@@ -51,6 +51,7 @@ function Marketplace({ onProfile, sellerTabs }: MarketplaceProps) {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [enquiriesOpen, setEnquiriesOpen] = useState(false);
   const [ordersOpen, setOrdersOpen] = useState(false);
+  const [ordersRefreshKey, setOrdersRefreshKey] = useState(0);
 
   const { data: enquiriesData } = useFrappeGetCall<
     FrappeResponse<{ status: string }[]>
@@ -106,10 +107,12 @@ function Marketplace({ onProfile, sellerTabs }: MarketplaceProps) {
       <BuyerEnquiriesDrawer
         isOpen={enquiriesOpen}
         onClose={() => setEnquiriesOpen(false)}
+        onPaymentSuccess={() => setOrdersRefreshKey((k) => k + 1)}
       />
       <MyOrdersDrawer
         isOpen={ordersOpen}
         onClose={() => setOrdersOpen(false)}
+        refreshKey={ordersRefreshKey}
       />
       <Navigation
         onProfileClick={onProfile}

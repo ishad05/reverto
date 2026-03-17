@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { CheckCircle2, Loader2, CreditCard, IndianRupee } from "lucide-react";
+import { useFrappePostCall } from "frappe-react-sdk";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { Separator } from "./ui/seperator";
@@ -28,7 +29,6 @@ interface PaymentModalProps {
   open: boolean;
   onClose: () => void;
   lines: PaymentLine[];
-  /** If provided, calls confirm_payment on the backend when confirming */
   enquiryId?: string;
   onSuccess?: () => void;
 }
@@ -46,7 +46,12 @@ export function PaymentModal({
 }: PaymentModalProps) {
   const [phase, setPhase] = useState<"review" | "processing" | "success">("review");
   const [error, setError] = useState<string | null>(null);
-  const [paidTotal, setPaidTotal] = useState<number>(0);
+  const [confirmedTotal, setConfirmedTotal] = useState<number>(0);
+
+  // Use the SDK — handles CSRF, session cookies, and error format automatically
+  const { call: confirmPayment } = useFrappePostCall<{ success: boolean }>(
+    "reverto.api.enquiry.confirm_payment",
+  );
 
   const subtotal = lines.reduce((s, l) => s + l.pricePerKg * l.quantityKg, 0);
   const gst = subtotal * GST;
@@ -55,38 +60,38 @@ export function PaymentModal({
   const handleConfirm = async () => {
     setError(null);
     setPhase("processing");
+    const totalSnapshot = grandTotal;
 
     try {
-      if (enquiryId) {
-        const csrf =
-          document.cookie
-            .split("; ")
-            .find((r) => r.startsWith("X-Frappe-CSRF-Token="))
-            ?.split("=")[1] ?? "";
-
-        const res = await fetch("/api/method/reverto.api.enquiry.confirm_payment", {
-          method: "POST",
-          credentials: "include",
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-            "X-Frappe-CSRF-Token": csrf,
-          },
-          body: new URLSearchParams({ enquiry_id: enquiryId }).toString(),
-        });
-
-        const data = await res.json();
-        if (!res.ok) {
-          throw new Error(
-            data?.exception ?? data?._error_message ?? "Payment failed",
-          );
-        }
+      if (!enquiryId) {
+        throw new Error("No enquiry ID provided — cannot process payment.");
       }
-
-      setPaidTotal(grandTotal);
+      await confirmPayment({ enquiry_id: enquiryId });
+      setConfirmedTotal(totalSnapshot);
       setPhase("success");
       onSuccess?.();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+    } catch (err: unknown) {
+      // frappe-react-sdk throws an object with an `exception` or `message` field
+      let msg = "Payment failed. Please try again.";
+      if (err && typeof err === "object") {
+        const e = err as Record<string, unknown>;
+        if (typeof e.exception === "string" && e.exception) {
+          // Strip Python traceback prefix if present
+          const lastLine = e.exception.split("\n").filter(Boolean).pop() ?? "";
+          msg = lastLine || e.exception;
+        } else if (typeof e.message === "string" && e.message) {
+          msg = e.message;
+        } else if (typeof e._server_messages === "string") {
+          try {
+            const parsed = JSON.parse(e._server_messages as string);
+            const inner = JSON.parse(parsed[0]);
+            msg = inner?.message ?? msg;
+          } catch {
+            // ignore parse errors
+          }
+        }
+      }
+      setError(msg);
       setPhase("review");
     }
   };
@@ -94,7 +99,7 @@ export function PaymentModal({
   const handleClose = () => {
     setPhase("review");
     setError(null);
-    setPaidTotal(0);
+    setConfirmedTotal(0);
     onClose();
   };
 
@@ -115,7 +120,7 @@ export function PaymentModal({
             </div>
             <div className="bg-gray-50 rounded-xl px-6 py-3 text-center border border-gray-100">
               <p className="text-xs text-gray-500 mb-0.5">Total paid</p>
-              <p className="text-2xl font-bold text-emerald-700">{fmt(paidTotal)}</p>
+              <p className="text-2xl font-bold text-emerald-700">{fmt(confirmedTotal)}</p>
               <p className="text-xs text-gray-400 mt-0.5">incl. 18% GST</p>
             </div>
             <Button
@@ -189,9 +194,9 @@ export function PaymentModal({
             {/* Actions */}
             <div className="px-6 pb-6 pt-4 space-y-3">
               {error && (
-                <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+                <div className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2 break-words">
                   {error}
-                </p>
+                </div>
               )}
               <Button
                 className="w-full bg-emerald-600 hover:bg-emerald-700 gap-2"

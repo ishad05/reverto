@@ -64,9 +64,11 @@ function timeAgo(creation: string): string {
 interface BuyerEnquiriesDrawerProps {
   isOpen: boolean;
   onClose: () => void;
+  /** Called after any successful payment so the parent can refresh My Orders */
+  onPaymentSuccess?: () => void;
 }
 
-export function BuyerEnquiriesDrawer({ isOpen, onClose }: BuyerEnquiriesDrawerProps) {
+export function BuyerEnquiriesDrawer({ isOpen, onClose, onPaymentSuccess }: BuyerEnquiriesDrawerProps) {
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [payEnquiry, setPayEnquiry] = useState<BuyerEnquiry | null>(null);
 
@@ -81,6 +83,11 @@ export function BuyerEnquiriesDrawer({ isOpen, onClose }: BuyerEnquiriesDrawerPr
   const activeCount = enquiries.filter(
     (e) => e.status === "Open" || e.status === "Negotiating",
   ).length;
+
+  const handlePaymentSuccess = () => {
+    mutate();           // refresh the enquiry list immediately
+    onPaymentSuccess?.(); // tell the parent (App) to refresh My Orders
+  };
 
   return (
     <>
@@ -174,7 +181,7 @@ export function BuyerEnquiriesDrawer({ isOpen, onClose }: BuyerEnquiriesDrawerPr
                         className="mt-2 flex items-center gap-1.5 text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg px-3 py-1.5 transition-colors"
                       >
                         <CreditCard className="w-3.5 h-3.5" />
-                        Pay Now — {fmt((enq.agreed_price_per_kg ?? enq.original_price_per_kg) * enq.quantity_kg * 1.18)}
+                        Pay Now — {fmt((enq.agreed_price_per_kg || enq.original_price_per_kg) * enq.quantity_kg * 1.18)}
                       </button>
                     )}
                   </div>
@@ -196,13 +203,17 @@ export function BuyerEnquiriesDrawer({ isOpen, onClose }: BuyerEnquiriesDrawerPr
           </DialogHeader>
           <div className="flex-1 min-h-0">
             {activeChatId && (
-              <ChatWindow key={activeChatId} enquiryId={activeChatId} />
+              <ChatWindow
+                key={activeChatId}
+                enquiryId={activeChatId}
+                onPaymentSuccess={handlePaymentSuccess}
+              />
             )}
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Payment modal for accepted enquiries */}
+      {/* Payment modal for "Pay Now" button on accepted enquiries */}
       {payEnquiry && (
         <PaymentModal
           open={!!payEnquiry}
@@ -213,7 +224,7 @@ export function BuyerEnquiriesDrawer({ isOpen, onClose }: BuyerEnquiriesDrawerPr
             quantityKg: payEnquiry.quantity_kg,
             pricePerKg: payEnquiry.agreed_price_per_kg || payEnquiry.original_price_per_kg,
           } as PaymentLine]}
-          onSuccess={() => { mutate(); }}
+          onSuccess={handlePaymentSuccess}
         />
       )}
     </>

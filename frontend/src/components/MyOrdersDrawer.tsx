@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { ShoppingBag, Loader2, PackageCheck, IndianRupee } from "lucide-react";
 import { useFrappeGetCall } from "frappe-react-sdk";
 import {
@@ -56,9 +57,11 @@ function formatDate(creation: string): string {
 interface MyOrdersDrawerProps {
   isOpen: boolean;
   onClose: () => void;
+  /** Increment this from the parent to trigger an immediate refetch */
+  refreshKey?: number;
 }
 
-export function MyOrdersDrawer({ isOpen, onClose }: MyOrdersDrawerProps) {
+export function MyOrdersDrawer({ isOpen, onClose, refreshKey = 0 }: MyOrdersDrawerProps) {
   const { data, isLoading, mutate } = useFrappeGetCall<FrappeResp<Order[]>>(
     "reverto.api.enquiry.get_my_orders",
     {},
@@ -66,8 +69,23 @@ export function MyOrdersDrawer({ isOpen, onClose }: MyOrdersDrawerProps) {
     { refreshInterval: 15000 },
   );
 
-  const orders = data?.message ?? [];
+  // Refetch when the drawer opens (skip initial mount when it's closed)
+  useEffect(() => {
+    if (isOpen) mutate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
+  // Refetch when a payment is confirmed — skip the initial value of 0
+  const prevKeyRef = useRef(refreshKey);
+  useEffect(() => {
+    if (refreshKey !== prevKeyRef.current) {
+      prevKeyRef.current = refreshKey;
+      mutate();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshKey]);
+
+  const orders = data?.message ?? [];
   const lifetimeTotal = orders.reduce((sum, o) => sum + (o.total_paid || 0), 0);
 
   return (
@@ -99,7 +117,9 @@ export function MyOrdersDrawer({ isOpen, onClose }: MyOrdersDrawerProps) {
               <div>
                 <p className="text-xs text-emerald-600 font-medium">Total Spent</p>
                 <p className="text-xl font-bold text-emerald-700">{fmt(lifetimeTotal)}</p>
-                <p className="text-xs text-gray-400">incl. 18% GST · {orders.length} order{orders.length !== 1 ? "s" : ""}</p>
+                <p className="text-xs text-gray-400">
+                  incl. 18% GST · {orders.length} order{orders.length !== 1 ? "s" : ""}
+                </p>
               </div>
               <PackageCheck className="w-8 h-8 text-emerald-300" />
             </div>
@@ -126,7 +146,8 @@ export function MyOrdersDrawer({ isOpen, onClose }: MyOrdersDrawerProps) {
           ) : (
             <div className="divide-y divide-gray-100">
               {orders.map((order) => {
-                const effectivePrice = order.agreed_price_per_kg || order.original_price_per_kg;
+                const effectivePrice =
+                  order.agreed_price_per_kg || order.original_price_per_kg;
                 const subtotal = effectivePrice * order.quantity_kg;
                 const gst = subtotal * 0.18;
                 const grandTotal = subtotal + gst;

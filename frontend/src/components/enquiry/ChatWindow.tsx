@@ -133,7 +133,7 @@ type FrappeResp<T> = { message: T };
 // ChatWindow
 // ---------------------------------------------------------------------------
 
-export function ChatWindow({ enquiryId }: { enquiryId: string }) {
+export function ChatWindow({ enquiryId, onPaymentSuccess }: { enquiryId: string; onPaymentSuccess?: () => void }) {
   const { currentUser } = useFrappeAuth();
   const [text, setText] = useState("");
   const [priceInput, setPriceInput] = useState("");
@@ -487,16 +487,16 @@ export function ChatWindow({ enquiryId }: { enquiryId: string }) {
                   Deal Agreed
                 </p>
                 <div className="flex justify-between text-xs text-gray-600">
-                  <span>{enquiry.quantity_kg} kg × ₹{enquiry.agreed_price_per_kg}/kg</span>
-                  <span>Subtotal: {fmt((enquiry.agreed_price_per_kg ?? 0) * enquiry.quantity_kg)}</span>
+                  <span>{enquiry.quantity_kg} kg × ₹{enquiry.agreed_price_per_kg || enquiry.original_price_per_kg}/kg</span>
+                  <span>Subtotal: {fmt((enquiry.agreed_price_per_kg || enquiry.original_price_per_kg) * enquiry.quantity_kg)}</span>
                 </div>
                 <div className="flex justify-between text-xs text-gray-600">
                   <span>GST (18%)</span>
-                  <span>{fmt((enquiry.agreed_price_per_kg ?? 0) * enquiry.quantity_kg * GST)}</span>
+                  <span>{fmt((enquiry.agreed_price_per_kg || enquiry.original_price_per_kg) * enquiry.quantity_kg * GST)}</span>
                 </div>
                 <div className="flex justify-between text-sm font-bold text-emerald-700 pt-1 border-t border-emerald-200">
                   <span>Total</span>
-                  <span>{fmt((enquiry.agreed_price_per_kg ?? 0) * enquiry.quantity_kg * (1 + GST))}</span>
+                  <span>{fmt((enquiry.agreed_price_per_kg || enquiry.original_price_per_kg) * enquiry.quantity_kg * (1 + GST))}</span>
                 </div>
               </div>
 
@@ -528,7 +528,7 @@ export function ChatWindow({ enquiryId }: { enquiryId: string }) {
           quantityKg: enquiry.quantity_kg,
           pricePerKg: enquiry.agreed_price_per_kg || enquiry.original_price_per_kg,
         }]}
-        onSuccess={() => { mutate(); }}
+        onSuccess={() => { mutate(); onPaymentSuccess?.(); }}
       />
     </div>
   );
