@@ -526,7 +526,7 @@ export function ChatWindow({ enquiryId }: { enquiryId: string }) {
         lines={[{
           productName: enquiry.product_name,
           quantityKg: enquiry.quantity_kg,
-          pricePerKg: enquiry.agreed_price_per_kg ?? enquiry.original_price_per_kg,
+          pricePerKg: enquiry.agreed_price_per_kg || enquiry.original_price_per_kg,
         }]}
         onSuccess={() => { mutate(); }}
       />

@@ -92,9 +92,9 @@ export function PaymentModal({
   };
 
   const handleClose = () => {
-    // Reset state when closing
     setPhase("review");
     setError(null);
+    setPaidTotal(0);
     onClose();
   };
 

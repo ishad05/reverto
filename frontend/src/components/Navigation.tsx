@@ -1,4 +1,4 @@
-import { Search, MapPin, Bell, User, X, ShoppingCart, MessageSquare } from "lucide-react";
+import { Search, MapPin, Bell, User, X, ShoppingCart, MessageSquare, ShoppingBag } from "lucide-react";
 import logo from "../../public/reverto_logo1.svg";
 import { useCart } from "../context/CartContext";
 
@@ -15,6 +15,8 @@ interface NavigationProps {
   sellerTabs?: SellerTabsProps;
   onEnquiriesClick?: () => void;
   enquiryBadge?: number;
+  onOrdersClick?: () => void;
+  ordersBadge?: number;
 }
 
 export function Navigation({
@@ -24,6 +26,8 @@ export function Navigation({
   sellerTabs,
   onEnquiriesClick,
   enquiryBadge = 0,
+  onOrdersClick,
+  ordersBadge = 0,
 }: NavigationProps) {
   const { totalItems, openCart } = useCart();
 
@@ -106,6 +110,21 @@ export function Navigation({
                 {enquiryBadge > 0 && (
                   <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-emerald-600 text-white text-[10px] font-bold px-1">
                     {enquiryBadge > 99 ? "99+" : enquiryBadge}
+                  </span>
+                )}
+              </button>
+            )}
+
+            {onOrdersClick && (
+              <button
+                onClick={onOrdersClick}
+                className="relative p-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                aria-label="My orders"
+              >
+                <ShoppingBag className="w-6 h-6" />
+                {ordersBadge > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-emerald-600 text-white text-[10px] font-bold px-1">
+                    {ordersBadge > 99 ? "99+" : ordersBadge}
                   </span>
                 )}
               </button>

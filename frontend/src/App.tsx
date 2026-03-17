@@ -14,6 +14,7 @@ import { SignupPage } from "./pages/SignupPage";
 import { SellerDashboard } from "./pages/SellerDashboard";
 import { CartProvider } from "./context/CartContext";
 import { BuyerEnquiriesDrawer } from "./components/BuyerEnquiriesDrawer";
+import { MyOrdersDrawer } from "./components/MyOrdersDrawer";
 
 type AppPage = "home" | "login" | "signup" | "profile" | "seller-dashboard";
 
@@ -49,6 +50,7 @@ function Marketplace({ onProfile, sellerTabs }: MarketplaceProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [enquiriesOpen, setEnquiriesOpen] = useState(false);
+  const [ordersOpen, setOrdersOpen] = useState(false);
 
   const { data: enquiriesData } = useFrappeGetCall<
     FrappeResponse<{ status: string }[]>
@@ -105,12 +107,17 @@ function Marketplace({ onProfile, sellerTabs }: MarketplaceProps) {
         isOpen={enquiriesOpen}
         onClose={() => setEnquiriesOpen(false)}
       />
+      <MyOrdersDrawer
+        isOpen={ordersOpen}
+        onClose={() => setOrdersOpen(false)}
+      />
       <Navigation
         onProfileClick={onProfile}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         onEnquiriesClick={() => setEnquiriesOpen(true)}
         enquiryBadge={enquiryBadge}
+        onOrdersClick={() => setOrdersOpen(true)}
         sellerTabs={
           sellerTabs
             ? {

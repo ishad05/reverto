@@ -250,10 +250,13 @@ def confirm_payment(enquiry_id: str) -> dict:
 	enquiry.status = "Closed"
 	enquiry.save(ignore_permissions=True)
 
-	# Mark the product as Sold
+	# Reduce product inventory; mark Sold only when stock reaches zero
 	if frappe.db.exists("Product", enquiry.product):
 		product = frappe.get_doc("Product", enquiry.product)
-		product.status = "Sold"
+		new_qty = max(0, (product.quantity or 0) - (enquiry.quantity_kg or 0))
+		product.quantity = new_qty
+		if new_qty <= 0:
+			product.status = "Sold"
 		product.save(ignore_permissions=True)
 
 	_add_message(enquiry_id, "system", "Payment confirmed. The deal is now complete.")
@@ -272,6 +275,28 @@ def confirm_payment(enquiry_id: str) -> dict:
 	)
 
 	return {"success": True}
+
+
+@frappe.whitelist()
+def get_my_orders() -> list:
+	"""Return all completed (Closed) enquiries for the current buyer, enriched with product image."""
+	orders = frappe.get_all(
+		"Reverto Enquiry",
+		filters={"buyer": frappe.session.user, "status": "Closed"},
+		fields=[
+			"name", "product", "product_name", "seller",
+			"quantity_kg", "original_price_per_kg", "agreed_price_per_kg",
+			"status", "creation",
+		],
+		order_by="creation desc",
+		ignore_permissions=True,
+	)
+	for order in orders:
+		order["product_image"] = frappe.db.get_value("Product", order["product"], "product_image") or None
+		price = float(order.get("agreed_price_per_kg") or order.get("original_price_per_kg") or 0)
+		subtotal = price * (order.get("quantity_kg") or 0)
+		order["total_paid"] = round(subtotal * 1.18, 2)
+	return orders
 
 
 @frappe.whitelist()

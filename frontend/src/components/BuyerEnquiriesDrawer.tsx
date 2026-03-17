@@ -211,7 +211,7 @@ export function BuyerEnquiriesDrawer({ isOpen, onClose }: BuyerEnquiriesDrawerPr
           lines={[{
             productName: payEnquiry.product_name,
             quantityKg: payEnquiry.quantity_kg,
-            pricePerKg: payEnquiry.agreed_price_per_kg ?? payEnquiry.original_price_per_kg,
+            pricePerKg: payEnquiry.agreed_price_per_kg || payEnquiry.original_price_per_kg,
           } as PaymentLine]}
           onSuccess={() => { mutate(); }}
         />
