@@ -444,6 +444,31 @@ def direct_purchase(product_id: str, quantity_kg: int) -> dict:
 
 
 @frappe.whitelist()
+def get_seller_orders() -> list:
+	"""Return all completed (Closed) enquiries where the current user is the seller."""
+	orders = frappe.get_all(
+		"Reverto Enquiry",
+		filters={"seller": frappe.session.user, "status": "Closed"},
+		fields=[
+			"name", "product", "product_name", "buyer",
+			"quantity_kg", "original_price_per_kg", "agreed_price_per_kg",
+			"status", "creation",
+		],
+		order_by="creation desc",
+		ignore_permissions=True,
+	)
+	for order in orders:
+		order["product_image"] = frappe.db.get_value("Product", order["product"], "product_image") or None
+		buyer_name = frappe.db.get_value("User", order["buyer"], "full_name") or order["buyer"]
+		order["buyer_name"] = buyer_name
+		price = float(order.get("agreed_price_per_kg") or order.get("original_price_per_kg") or 0)
+		subtotal = price * (order.get("quantity_kg") or 0)
+		order["net_revenue"] = round(subtotal, 2)          # pre-GST — what the seller earns
+		order["total_billed"] = round(subtotal * 1.18, 2)  # incl. GST — what the buyer paid
+	return orders
+
+
+@frappe.whitelist()
 def get_seller_enquiries() -> list:
 	return frappe.get_all(
 		"Reverto Enquiry",
