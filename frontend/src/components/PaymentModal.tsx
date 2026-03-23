@@ -29,7 +29,10 @@ interface PaymentModalProps {
   open: boolean;
   onClose: () => void;
   lines: PaymentLine[];
+  /** Enquiry-based payment — provide this for the negotiation flow */
   enquiryId?: string;
+  /** Direct purchase — provide this to skip negotiation and buy at listed price */
+  directPurchase?: { productId: string; quantityKg: number };
   onSuccess?: () => void;
 }
 
@@ -42,15 +45,18 @@ export function PaymentModal({
   onClose,
   lines,
   enquiryId,
+  directPurchase,
   onSuccess,
 }: PaymentModalProps) {
   const [phase, setPhase] = useState<"review" | "processing" | "success">("review");
   const [error, setError] = useState<string | null>(null);
   const [confirmedTotal, setConfirmedTotal] = useState<number>(0);
 
-  // Use the SDK — handles CSRF, session cookies, and error format automatically
   const { call: confirmPayment } = useFrappePostCall<{ success: boolean }>(
     "reverto.api.enquiry.confirm_payment",
+  );
+  const { call: buyDirect } = useFrappePostCall<{ success: boolean; enquiry_id: string }>(
+    "reverto.api.enquiry.direct_purchase",
   );
 
   const subtotal = lines.reduce((s, l) => s + l.pricePerKg * l.quantityKg, 0);
@@ -63,20 +69,25 @@ export function PaymentModal({
     const totalSnapshot = grandTotal;
 
     try {
-      if (!enquiryId) {
-        throw new Error("No enquiry ID provided — cannot process payment.");
+      if (directPurchase) {
+        await buyDirect({
+          product_id: directPurchase.productId,
+          quantity_kg: directPurchase.quantityKg,
+        });
+      } else {
+        if (!enquiryId) {
+          throw new Error("No enquiry ID provided — cannot process payment.");
+        }
+        await confirmPayment({ enquiry_id: enquiryId });
       }
-      await confirmPayment({ enquiry_id: enquiryId });
       setConfirmedTotal(totalSnapshot);
       setPhase("success");
       onSuccess?.();
     } catch (err: unknown) {
-      // frappe-react-sdk throws an object with an `exception` or `message` field
       let msg = "Payment failed. Please try again.";
       if (err && typeof err === "object") {
         const e = err as Record<string, unknown>;
         if (typeof e.exception === "string" && e.exception) {
-          // Strip Python traceback prefix if present
           const lastLine = e.exception.split("\n").filter(Boolean).pop() ?? "";
           msg = lastLine || e.exception;
         } else if (typeof e.message === "string" && e.message) {
@@ -137,6 +148,11 @@ export function PaymentModal({
                 <CreditCard className="w-5 h-5 text-emerald-600" />
                 Order Summary
               </DialogTitle>
+              {directPurchase && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Buying at listed price — no negotiation required
+                </p>
+              )}
             </DialogHeader>
 
             {/* Lines */}

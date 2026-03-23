@@ -67,7 +67,7 @@ function Marketplace({ onProfile, sellerTabs }: MarketplaceProps) {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  const { data, isLoading, error } = useFrappeGetCall<
+  const { data, isLoading, error, mutate: mutateProducts } = useFrappeGetCall<
     FrappeResponse<ProductSummary[]>
   >("reverto.api.products.list_products", {
     limit: 50,
@@ -220,6 +220,10 @@ function Marketplace({ onProfile, sellerTabs }: MarketplaceProps) {
                           wasteType={product.category ?? "Other"}
                           sellerType={sellerType}
                           distance={`${distanceKm.toFixed(1)} km`}
+                          onPurchaseSuccess={() => {
+                            mutateProducts();
+                            setOrdersRefreshKey((k) => k + 1);
+                          }}
                         />
                       );
                     })}

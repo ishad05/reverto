@@ -373,6 +373,77 @@ def get_sustainability_stats() -> dict:
 
 
 @frappe.whitelist()
+def direct_purchase(product_id: str, quantity_kg: int) -> dict:
+	"""
+	Buy a product directly at the listed price — skips the negotiation flow.
+	Creates a Closed enquiry and reduces inventory immediately.
+	"""
+	product = frappe.get_doc("Product", product_id)
+	buyer = frappe.session.user
+	seller = product.owner
+
+	if buyer == seller:
+		frappe.throw("You cannot buy your own listing.")
+	if seller == "Guest" or not seller:
+		frappe.throw("This listing has no seller assigned.")
+
+	qty = int(quantity_kg)
+	available = int(product.quantity or 0)
+	if qty <= 0:
+		frappe.throw("Quantity must be at least 1 kg.")
+	if qty > available:
+		frappe.throw(f"Only {available} kg available. Please reduce your quantity.")
+
+	price = float(product.price_per_quantity or 0)
+	if price <= 0:
+		frappe.throw("This product has no listed price — use the enquiry flow to negotiate.")
+
+	enquiry = frappe.get_doc(
+		{
+			"doctype": "Reverto Enquiry",
+			"product": product_id,
+			"product_name": product.product_name,
+			"buyer": buyer,
+			"seller": seller,
+			"quantity_kg": qty,
+			"original_price_per_kg": price,
+			"agreed_price_per_kg": price,
+			"status": "Closed",
+		}
+	)
+	enquiry.insert(ignore_permissions=True)
+
+	_add_message(
+		enquiry.name,
+		"system",
+		f"Direct purchase: {qty} kg at ₹{price}/kg. Payment confirmed immediately.",
+		sender=buyer,
+	)
+
+	# Reduce inventory; mark Sold only when stock reaches zero
+	new_qty = max(0, available - qty)
+	product.quantity = new_qty
+	if new_qty <= 0:
+		product.status = "Sold"
+	product.save(ignore_permissions=True)
+
+	frappe.db.commit()
+
+	# Notify seller
+	frappe.publish_realtime(
+		event="new_enquiry",
+		message={
+			"enquiry_id": enquiry.name,
+			"product_name": product.product_name,
+			"type": "direct_purchase",
+		},
+		user=seller,
+	)
+
+	return {"success": True, "enquiry_id": enquiry.name}
+
+
+@frappe.whitelist()
 def get_seller_enquiries() -> list:
 	return frappe.get_all(
 		"Reverto Enquiry",
