@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Map, Grid3X3, RefreshCcw } from "lucide-react";
-import { useFrappeAuth, useFrappeGetCall } from "frappe-react-sdk";
+import { Grid3X3, MapPin, RefreshCcw } from "lucide-react";
+import { useFrappeAuth, useFrappeGetCall, useFrappePostCall } from "frappe-react-sdk";
 import { Navigation } from "./components/Navigation";
 import { Hero } from "./components/Hero";
 import { CategoryFilters, categories } from "./components/CategoryFilters";
@@ -15,6 +15,8 @@ import { SellerDashboard } from "./pages/SellerDashboard";
 import { CartProvider } from "./context/CartContext";
 import { BuyerEnquiriesDrawer } from "./components/BuyerEnquiriesDrawer";
 import { MyOrdersDrawer } from "./components/MyOrdersDrawer";
+import { ProductMap, type MapProduct } from "./components/ProductMap";
+import { PaymentModal } from "./components/PaymentModal";
 
 type AppPage = "home" | "login" | "signup" | "profile" | "seller-dashboard";
 
@@ -27,6 +29,9 @@ type ProductSummary = {
   status?: string;
   product_image?: string | null;
   owner?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  location_url?: string | null;
 };
 
 type FrappeResponse<T> = {
@@ -52,6 +57,11 @@ function Marketplace({ onProfile, sellerTabs }: MarketplaceProps) {
   const [enquiriesOpen, setEnquiriesOpen] = useState(false);
   const [ordersOpen, setOrdersOpen] = useState(false);
   const [ordersRefreshKey, setOrdersRefreshKey] = useState(0);
+  const [mapBuyProduct, setMapBuyProduct] = useState<MapProduct | null>(null);
+
+  const { call: createEnquiry } = useFrappePostCall<{ message: { enquiry_id: string } }>(
+    "reverto.api.enquiry.create_enquiry",
+  );
 
   const { data: enquiriesData } = useFrappeGetCall<
     FrappeResponse<{ status: string }[]>
@@ -114,6 +124,27 @@ function Marketplace({ onProfile, sellerTabs }: MarketplaceProps) {
         onClose={() => setOrdersOpen(false)}
         refreshKey={ordersRefreshKey}
       />
+      {mapBuyProduct && (
+        <PaymentModal
+          open={!!mapBuyProduct}
+          onClose={() => setMapBuyProduct(null)}
+          lines={[{
+            productName: mapBuyProduct.product_name,
+            quantityKg: mapBuyProduct.quantity ?? 1,
+            pricePerKg: mapBuyProduct.price_per_quantity ?? 0,
+            image: mapBuyProduct.product_image ?? undefined,
+          }]}
+          directPurchase={{
+            productId: mapBuyProduct.name,
+            quantityKg: mapBuyProduct.quantity ?? 1,
+          }}
+          onSuccess={() => {
+            setMapBuyProduct(null);
+            mutateProducts();
+            setOrdersRefreshKey((k) => k + 1);
+          }}
+        />
+      )}
       <Navigation
         onProfileClick={onProfile}
         searchQuery={searchQuery}
@@ -161,7 +192,7 @@ function Marketplace({ onProfile, sellerTabs }: MarketplaceProps) {
                   : "text-gray-600 hover:bg-gray-100"
               }`}
             >
-              <Map className="w-4 h-4" />
+              <MapPin className="w-4 h-4" />
               Map
             </button>
           </div>
@@ -249,14 +280,15 @@ function Marketplace({ onProfile, sellerTabs }: MarketplaceProps) {
                 )}
               </>
             ) : (
-              <div className="bg-white rounded-xl border border-gray-200 h-[600px] flex items-center justify-center">
-                <div className="text-center text-gray-500">
-                  <Map className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                  <p>Map view coming soon</p>
-                  <p className="text-sm mt-2">
-                    Interactive map showing waste locations
-                  </p>
-                </div>
+              <div className="h-[600px]">
+                <ProductMap
+                  products={products}
+                  onEnquire={async (productId, quantity) => {
+                    await createEnquiry({ product_id: productId, quantity_kg: quantity });
+                    setEnquiriesOpen(true);
+                  }}
+                  onBuyNow={(product) => setMapBuyProduct(product)}
+                />
               </div>
             )}
           </div>

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import re
 from typing import Any, Optional, TypedDict
+from urllib.parse import parse_qs, urlparse
 
 import frappe
 
@@ -14,6 +16,9 @@ class ProductSummary(TypedDict):
 	status: str
 	product_image: Optional[str]
 	owner: str
+	latitude: Optional[float]
+	longitude: Optional[float]
+	location_url: Optional[str]
 
 
 def _category_field_exists() -> bool:
@@ -22,6 +27,62 @@ def _category_field_exists() -> bool:
 		return frappe.db.has_column("Product", "category")
 	except Exception:
 		return False
+
+
+def _location_fields_exist() -> bool:
+	"""Check whether the location columns have been created via bench migrate."""
+	try:
+		return frappe.db.has_column("Product", "latitude")
+	except Exception:
+		return False
+
+
+def _parse_coords_from_url(url: str) -> tuple[Optional[float], Optional[float]]:
+	"""
+	Extract (latitude, longitude) from a Google Maps or OpenStreetMap URL.
+	Returns (None, None) if no coordinates can be parsed.
+
+	Supported formats:
+	  Google Maps place:  .../maps/place/.../@12.9716,77.5946,15z
+	  Google Maps q=:     .../maps?q=12.9716,77.5946
+	  Google Maps ll=:    .../maps?ll=12.9716,77.5946
+	  OpenStreetMap:      ...openstreetmap.org/#map=15/12.9716/77.5946
+	  Bare decimal pair:  12.9716,77.5946
+	"""
+	if not url or not url.strip():
+		return None, None
+
+	url = url.strip()
+
+	# Google Maps @lat,lng  (place / direction URLs)
+	m = re.search(r"@(-?\d+\.?\d*),(-?\d+\.?\d*)", url)
+	if m:
+		return float(m.group(1)), float(m.group(2))
+
+	# Query-string params: ?q= or ?ll= or ?center=
+	try:
+		parsed = urlparse(url)
+		qs = parse_qs(parsed.query)
+		for key in ("q", "ll", "center"):
+			if key in qs:
+				val = qs[key][0]
+				parts = val.split(",")
+				if len(parts) == 2:
+					return float(parts[0].strip()), float(parts[1].strip())
+	except Exception:
+		pass
+
+	# OpenStreetMap  #map=zoom/lat/lng
+	m = re.search(r"#map=\d+/(-?\d+\.?\d*)/(-?\d+\.?\d*)", url)
+	if m:
+		return float(m.group(1)), float(m.group(2))
+
+	# Bare decimal pair  "12.9716, 77.5946"
+	m = re.match(r"^\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*$", url)
+	if m:
+		return float(m.group(1)), float(m.group(2))
+
+	return None, None
 
 
 # ---------------------------------------------------------------------------
@@ -37,6 +98,7 @@ def list_products(
 	"""Return available products for the marketplace, with optional filters."""
 
 	has_category = _category_field_exists()
+	has_location = _location_fields_exist()
 
 	fields = [
 		"name",
@@ -49,6 +111,8 @@ def list_products(
 	]
 	if has_category:
 		fields.append("category")
+	if has_location:
+		fields += ["latitude", "longitude", "location_url"]
 
 	filters: dict[str, Any] = {"status": "Available"}
 
@@ -77,6 +141,9 @@ def list_products(
 			status=p.get("status") or "Available",
 			product_image=p.get("product_image"),
 			owner=p.get("owner", ""),
+			latitude=float(p["latitude"]) if p.get("latitude") else None,
+			longitude=float(p["longitude"]) if p.get("longitude") else None,
+			location_url=p.get("location_url"),
 		)
 		for p in products
 	]
@@ -90,6 +157,7 @@ def list_products(
 def my_products() -> list[dict]:
 	"""Return all product listings owned by the current user."""
 	has_category = _category_field_exists()
+	has_location = _location_fields_exist()
 
 	fields = [
 		"name",
@@ -103,6 +171,8 @@ def my_products() -> list[dict]:
 	]
 	if has_category:
 		fields.append("category")
+	if has_location:
+		fields += ["latitude", "longitude", "location_url"]
 
 	return frappe.get_all(
 		"Product",
@@ -121,6 +191,9 @@ def create_product(
 	category: Optional[str] = None,
 	product_image: Optional[str] = None,
 	status: str = "Available",
+	location_url: Optional[str] = None,
+	latitude: Optional[float] = None,
+	longitude: Optional[float] = None,
 ) -> dict:
 	"""Create a new product listing for the logged-in seller."""
 	doc_data: dict[str, Any] = {
@@ -134,6 +207,17 @@ def create_product(
 		doc_data["product_image"] = product_image
 	if category and _category_field_exists():
 		doc_data["category"] = category
+
+	if _location_fields_exist():
+		if location_url:
+			doc_data["location_url"] = location_url
+			parsed_lat, parsed_lng = _parse_coords_from_url(location_url)
+			# Parsed coords take priority; fall back to explicit params
+			doc_data["latitude"] = parsed_lat if parsed_lat is not None else (float(latitude) if latitude is not None else None)
+			doc_data["longitude"] = parsed_lng if parsed_lng is not None else (float(longitude) if longitude is not None else None)
+		else:
+			doc_data["latitude"] = float(latitude) if latitude is not None else None
+			doc_data["longitude"] = float(longitude) if longitude is not None else None
 
 	doc = frappe.get_doc(doc_data)
 	doc.insert(ignore_permissions=True)
@@ -150,6 +234,9 @@ def update_product(
 	status: str,
 	category: Optional[str] = None,
 	product_image: Optional[str] = None,
+	location_url: Optional[str] = None,
+	latitude: Optional[float] = None,
+	longitude: Optional[float] = None,
 ) -> dict:
 	"""Update an existing product listing (owner only)."""
 	doc = frappe.get_doc("Product", name)
@@ -164,6 +251,18 @@ def update_product(
 		doc.product_image = product_image
 	if category is not None and _category_field_exists():
 		doc.category = category
+
+	if _location_fields_exist():
+		if location_url is not None:
+			doc.location_url = location_url
+			parsed_lat, parsed_lng = _parse_coords_from_url(location_url)
+			doc.latitude = parsed_lat if parsed_lat is not None else (float(latitude) if latitude is not None else doc.latitude)
+			doc.longitude = parsed_lng if parsed_lng is not None else (float(longitude) if longitude is not None else doc.longitude)
+		else:
+			if latitude is not None:
+				doc.latitude = float(latitude)
+			if longitude is not None:
+				doc.longitude = float(longitude)
 
 	doc.save(ignore_permissions=True)
 	frappe.db.commit()

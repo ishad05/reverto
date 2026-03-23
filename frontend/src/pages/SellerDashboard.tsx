@@ -39,6 +39,9 @@ interface SellerProduct {
   status: string;
   product_image?: string;
   creation: string;
+  location_url?: string;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 interface SellerEnquiry {
@@ -234,6 +237,9 @@ export function SellerDashboard({
       price_per_quantity: p.price_per_quantity ?? 0,
       status: p.status,
       product_image: p.product_image ?? "",
+      location_url: p.location_url ?? "",
+      latitude: p.latitude ?? null,
+      longitude: p.longitude ?? null,
     });
     setIsModalOpen(true);
   };

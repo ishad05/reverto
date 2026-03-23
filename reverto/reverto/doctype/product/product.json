@@ -11,7 +11,11 @@
   "quantity",
   "price_per_quantity",
   "status",
-  "product_image"
+  "product_image",
+  "location_section",
+  "location_url",
+  "latitude",
+  "longitude"
  ],
  "fields": [
   {
@@ -55,13 +59,38 @@
    "fieldname": "product_image",
    "fieldtype": "Attach Image",
    "label": "Product image"
+  },
+  {
+   "fieldname": "location_section",
+   "fieldtype": "Section Break",
+   "label": "Location"
+  },
+  {
+   "description": "Paste a Google Maps or OpenStreetMap link — coordinates are extracted automatically",
+   "fieldname": "location_url",
+   "fieldtype": "Data",
+   "label": "Location URL"
+  },
+  {
+   "description": "Decimal degrees, e.g. 12.9716",
+   "fieldname": "latitude",
+   "fieldtype": "Float",
+   "label": "Latitude",
+   "precision": "6"
+  },
+  {
+   "description": "Decimal degrees, e.g. 77.5946",
+   "fieldname": "longitude",
+   "fieldtype": "Float",
+   "label": "Longitude",
+   "precision": "6"
   }
  ],
  "grid_page_length": 50,
  "image_field": "product_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-12 20:14:37.228870",
+ "modified": "2026-03-23 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "ReVerto",
  "name": "Product",

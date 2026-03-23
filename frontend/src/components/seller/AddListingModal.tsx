@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { ImagePlus, Loader2, X } from "lucide-react";
+import { ImagePlus, Loader2, X, MapPin, CheckCircle2, AlertCircle } from "lucide-react";
 import { useFrappePostCall } from "frappe-react-sdk";
 import {
   Dialog,
@@ -36,21 +36,66 @@ const STATUS_OPTIONS = [
 ];
 
 export interface ProductFormData {
-  name?: string; // only in edit mode
+  name?: string;
   product_name: string;
   category: string;
   quantity: number;
   price_per_quantity: number;
   status: string;
   product_image?: string;
+  location_url?: string;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
-interface AddListingModalProps {
-  open: boolean;
-  onClose: () => void;
-  onSuccess: () => void;
-  editingProduct?: ProductFormData | null;
+// ---------------------------------------------------------------------------
+// Client-side coordinate parser — mirrors the Python backend logic
+// ---------------------------------------------------------------------------
+
+function parseCoordsFromUrl(url: string): { lat: number; lng: number } | null {
+  if (!url.trim()) return null;
+  url = url.trim();
+
+  // Google Maps @lat,lng  (place / directions)
+  let m = url.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+  if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+
+  // Query string ?q=, ?ll=, ?center=
+  try {
+    const qs = new URL(url).searchParams;
+    for (const key of ["q", "ll", "center"]) {
+      const val = qs.get(key);
+      if (val) {
+        const parts = val.split(",");
+        if (parts.length === 2) {
+          const lat = parseFloat(parts[0].trim());
+          const lng = parseFloat(parts[1].trim());
+          if (!isNaN(lat) && !isNaN(lng)) return { lat, lng };
+        }
+      }
+    }
+  } catch {
+    // not a valid URL — try other patterns
+  }
+
+  // OpenStreetMap  #map=zoom/lat/lng
+  m = url.match(/#map=\d+\/(-?\d+\.?\d*)\/(-?\d+\.?\d*)/);
+  if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+
+  // Bare decimal pair  "12.9716, 77.5946"
+  m = url.match(/^\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*$/);
+  if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+
+  return null;
 }
+
+function formatCoord(n: number, pos: string, neg: string) {
+  return `${Math.abs(n).toFixed(4)}° ${n >= 0 ? pos : neg}`;
+}
+
+// ---------------------------------------------------------------------------
+// Image upload helper
+// ---------------------------------------------------------------------------
 
 async function uploadImageToFrappe(file: File): Promise<string> {
   const formData = new FormData();
@@ -70,6 +115,17 @@ async function uploadImageToFrappe(file: File): Promise<string> {
   return data.message.file_url as string;
 }
 
+// ---------------------------------------------------------------------------
+// AddListingModal
+// ---------------------------------------------------------------------------
+
+interface AddListingModalProps {
+  open: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+  editingProduct?: ProductFormData | null;
+}
+
 export function AddListingModal({
   open,
   onClose,
@@ -85,6 +141,13 @@ export function AddListingModal({
   const [status, setStatus] = useState(editingProduct?.status ?? "Available");
   const [imagePreview, setImagePreview] = useState<string>(editingProduct?.product_image ?? "");
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [locationUrl, setLocationUrl] = useState(editingProduct?.location_url ?? "");
+  const [parsedCoords, setParsedCoords] = useState<{ lat: number; lng: number } | null>(
+    editingProduct?.latitude && editingProduct?.longitude
+      ? { lat: editingProduct.latitude, lng: editingProduct.longitude }
+      : null,
+  );
+  const [coordParseError, setCoordParseError] = useState(false);
   const [error, setError] = useState("");
   const [uploading, setUploading] = useState(false);
 
@@ -112,6 +175,23 @@ export function AddListingModal({
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  const handleLocationUrlChange = (val: string) => {
+    setLocationUrl(val);
+    if (!val.trim()) {
+      setParsedCoords(null);
+      setCoordParseError(false);
+      return;
+    }
+    const coords = parseCoordsFromUrl(val);
+    if (coords) {
+      setParsedCoords(coords);
+      setCoordParseError(false);
+    } else {
+      setParsedCoords(null);
+      setCoordParseError(true);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -129,20 +209,22 @@ export function AddListingModal({
         try {
           imageUrl = await uploadImageToFrappe(imageFile);
         } catch {
-          // upload failed — proceed without image
           imageUrl = undefined;
         } finally {
           setUploading(false);
         }
       }
 
-      const payload = {
+      const payload: Record<string, unknown> = {
         product_name: productName.trim(),
         category,
         quantity: Number(quantity),
         price_per_quantity: Number(price),
         status,
         product_image: imageUrl ?? "",
+        location_url: locationUrl.trim() || "",
+        latitude: parsedCoords?.lat ?? null,
+        longitude: parsedCoords?.lng ?? null,
       };
 
       if (isEdit && editingProduct?.name) {
@@ -163,7 +245,7 @@ export function AddListingModal({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {isEdit ? "Edit Listing" : "Add New Listing"}
@@ -272,7 +354,7 @@ export function AddListingModal({
             </div>
           </div>
 
-          {/* Status — only in edit mode */}
+          {/* Status — edit mode only */}
           {isEdit && (
             <div>
               <Label className="mb-1.5 block">Status</Label>
@@ -290,6 +372,75 @@ export function AddListingModal({
               </Select>
             </div>
           )}
+
+          {/* ── Location ─────────────────────────────────────────────────── */}
+          <div className="border-t border-gray-100 pt-4">
+            <div className="flex items-center gap-2 mb-3">
+              <MapPin className="w-4 h-4 text-emerald-600" />
+              <span className="text-sm font-medium text-gray-700">Location</span>
+              <span className="text-xs text-gray-400">(optional — helps buyers find you on the map)</span>
+            </div>
+
+            <div>
+              <Label htmlFor="location_url" className="mb-1.5 block text-sm">
+                Google Maps or OpenStreetMap link
+              </Label>
+              <Input
+                id="location_url"
+                value={locationUrl}
+                onChange={(e) => handleLocationUrlChange(e.target.value)}
+                placeholder="https://maps.google.com/maps?q=12.9716,77.5946"
+                className={
+                  locationUrl && coordParseError
+                    ? "border-amber-300 focus-visible:ring-amber-400"
+                    : locationUrl && parsedCoords
+                      ? "border-emerald-300 focus-visible:ring-emerald-400"
+                      : ""
+                }
+              />
+
+              {/* Coord preview — success */}
+              {parsedCoords && (
+                <div className="mt-2 flex items-center gap-2 px-3 py-2 bg-emerald-50 border border-emerald-100 rounded-lg">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                  <span className="text-xs text-emerald-700 font-medium">
+                    {formatCoord(parsedCoords.lat, "N", "S")},{" "}
+                    {formatCoord(parsedCoords.lng, "E", "W")}
+                  </span>
+                  <a
+                    href={`https://www.openstreetmap.org/#map=15/${parsedCoords.lat}/${parsedCoords.lng}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="ml-auto text-xs text-emerald-600 underline hover:text-emerald-800"
+                  >
+                    Verify ↗
+                  </a>
+                </div>
+              )}
+
+              {/* Parse error */}
+              {locationUrl && coordParseError && (
+                <div className="mt-2 flex items-start gap-2 px-3 py-2 bg-amber-50 border border-amber-100 rounded-lg">
+                  <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                  <div className="text-xs text-amber-700 space-y-0.5">
+                    <p className="font-medium">Couldn't read coordinates from this link.</p>
+                    <p className="text-amber-600">
+                      Try right-clicking your location on Google Maps → "What's here?" and
+                      paste the link from the address bar.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Helper text when empty */}
+              {!locationUrl && (
+                <p className="mt-1.5 text-xs text-gray-400">
+                  Accepted: Google Maps links, OpenStreetMap links, or plain coordinates like{" "}
+                  <span className="font-mono">12.9716, 77.5946</span>
+                </p>
+              )}
+            </div>
+          </div>
 
           {error && (
             <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
