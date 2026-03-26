@@ -52,18 +52,28 @@ export interface ProductFormData {
 // Client-side coordinate parser — mirrors the Python backend logic
 // ---------------------------------------------------------------------------
 
+const SHORT_URL_PATTERN = /^https?:\/\/(maps\.app\.goo\.gl|goo\.gl)\//i;
+
+function isShortMapUrl(url: string): boolean {
+  return SHORT_URL_PATTERN.test(url.trim());
+}
+
 function parseCoordsFromUrl(url: string): { lat: number; lng: number } | null {
   if (!url.trim()) return null;
   url = url.trim();
+
+  // Short URLs (maps.app.goo.gl, goo.gl/maps) can't be resolved in the browser —
+  // the backend will follow the redirect on save.
+  if (isShortMapUrl(url)) return null;
 
   // Google Maps @lat,lng  (place / directions)
   let m = url.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
   if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
 
-  // Query string ?q=, ?ll=, ?center=
+  // Query string ?q=, ?ll=, ?center=, ?query=
   try {
     const qs = new URL(url).searchParams;
-    for (const key of ["q", "ll", "center"]) {
+    for (const key of ["q", "ll", "center", "query"]) {
       const val = qs.get(key);
       if (val) {
         const parts = val.split(",");
@@ -148,6 +158,7 @@ export function AddListingModal({
       : null,
   );
   const [coordParseError, setCoordParseError] = useState(false);
+  const [isShortUrl, setIsShortUrl] = useState(false);
   const [error, setError] = useState("");
   const [uploading, setUploading] = useState(false);
 
@@ -180,8 +191,16 @@ export function AddListingModal({
     if (!val.trim()) {
       setParsedCoords(null);
       setCoordParseError(false);
+      setIsShortUrl(false);
       return;
     }
+    if (isShortMapUrl(val)) {
+      setParsedCoords(null);
+      setCoordParseError(false);
+      setIsShortUrl(true);
+      return;
+    }
+    setIsShortUrl(false);
     const coords = parseCoordsFromUrl(val);
     if (coords) {
       setParsedCoords(coords);
@@ -415,6 +434,16 @@ export function AddListingModal({
                   >
                     Verify ↗
                   </a>
+                </div>
+              )}
+
+              {/* Short URL — backend will resolve on save */}
+              {isShortUrl && (
+                <div className="mt-2 flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-100 rounded-lg">
+                  <MapPin className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                  <p className="text-xs text-blue-700">
+                    Short link detected — coordinates will be resolved when you save.
+                  </p>
                 </div>
               )}
 

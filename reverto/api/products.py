@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import urllib.request
 from typing import Any, Optional, TypedDict
 from urllib.parse import parse_qs, urlparse
 
@@ -37,33 +38,58 @@ def _location_fields_exist() -> bool:
 		return False
 
 
+_SHORT_URL_HOSTS = ("maps.app.goo.gl", "goo.gl")
+
+
+def _resolve_short_url(url: str) -> str:
+	"""Follow HTTP redirects and return the final URL, or the original if it fails."""
+	try:
+		with urllib.request.urlopen(
+			urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"}),
+			timeout=5,
+		) as resp:
+			return resp.url
+	except Exception:
+		return url
+
+
 def _parse_coords_from_url(url: str) -> tuple[Optional[float], Optional[float]]:
 	"""
 	Extract (latitude, longitude) from a Google Maps or OpenStreetMap URL.
 	Returns (None, None) if no coordinates can be parsed.
 
 	Supported formats:
-	  Google Maps place:  .../maps/place/.../@12.9716,77.5946,15z
-	  Google Maps q=:     .../maps?q=12.9716,77.5946
-	  Google Maps ll=:    .../maps?ll=12.9716,77.5946
-	  OpenStreetMap:      ...openstreetmap.org/#map=15/12.9716/77.5946
-	  Bare decimal pair:  12.9716,77.5946
+	  Google Maps short:   maps.app.goo.gl/... or goo.gl/maps/...
+	  Google Maps place:   .../maps/place/.../@12.9716,77.5946,15z
+	  Google Maps q=:      .../maps?q=12.9716,77.5946
+	  Google Maps query=:  .../maps/search/?api=1&query=12.9716,77.5946
+	  Google Maps ll=:     .../maps?ll=12.9716,77.5946
+	  OpenStreetMap:       ...openstreetmap.org/#map=15/12.9716/77.5946
+	  Bare decimal pair:   12.9716,77.5946
 	"""
 	if not url or not url.strip():
 		return None, None
 
 	url = url.strip()
 
+	# Resolve short URLs (maps.app.goo.gl, goo.gl/maps) by following the redirect
+	try:
+		hostname = urlparse(url).hostname or ""
+		if any(hostname == h or hostname.endswith("." + h) for h in _SHORT_URL_HOSTS):
+			url = _resolve_short_url(url)
+	except Exception:
+		pass
+
 	# Google Maps @lat,lng  (place / direction URLs)
 	m = re.search(r"@(-?\d+\.?\d*),(-?\d+\.?\d*)", url)
 	if m:
 		return float(m.group(1)), float(m.group(2))
 
-	# Query-string params: ?q= or ?ll= or ?center=
+	# Query-string params: ?q= or ?ll= or ?center= or ?query=
 	try:
 		parsed = urlparse(url)
 		qs = parse_qs(parsed.query)
-		for key in ("q", "ll", "center"):
+		for key in ("q", "ll", "center", "query"):
 			if key in qs:
 				val = qs[key][0]
 				parts = val.split(",")
@@ -192,8 +218,6 @@ def create_product(
 	product_image: Optional[str] = None,
 	status: str = "Available",
 	location_url: Optional[str] = None,
-	latitude: Optional[float] = None,
-	longitude: Optional[float] = None,
 ) -> dict:
 	"""Create a new product listing for the logged-in seller."""
 	doc_data: dict[str, Any] = {
@@ -207,17 +231,8 @@ def create_product(
 		doc_data["product_image"] = product_image
 	if category and _category_field_exists():
 		doc_data["category"] = category
-
-	if _location_fields_exist():
-		if location_url:
-			doc_data["location_url"] = location_url
-			parsed_lat, parsed_lng = _parse_coords_from_url(location_url)
-			# Parsed coords take priority; fall back to explicit params
-			doc_data["latitude"] = parsed_lat if parsed_lat is not None else (float(latitude) if latitude is not None else None)
-			doc_data["longitude"] = parsed_lng if parsed_lng is not None else (float(longitude) if longitude is not None else None)
-		else:
-			doc_data["latitude"] = float(latitude) if latitude is not None else None
-			doc_data["longitude"] = float(longitude) if longitude is not None else None
+	if location_url and _location_fields_exist():
+		doc_data["location_url"] = location_url
 
 	doc = frappe.get_doc(doc_data)
 	doc.insert(ignore_permissions=True)
@@ -235,8 +250,6 @@ def update_product(
 	category: Optional[str] = None,
 	product_image: Optional[str] = None,
 	location_url: Optional[str] = None,
-	latitude: Optional[float] = None,
-	longitude: Optional[float] = None,
 ) -> dict:
 	"""Update an existing product listing (owner only)."""
 	doc = frappe.get_doc("Product", name)
@@ -251,18 +264,8 @@ def update_product(
 		doc.product_image = product_image
 	if category is not None and _category_field_exists():
 		doc.category = category
-
-	if _location_fields_exist():
-		if location_url is not None:
-			doc.location_url = location_url
-			parsed_lat, parsed_lng = _parse_coords_from_url(location_url)
-			doc.latitude = parsed_lat if parsed_lat is not None else (float(latitude) if latitude is not None else doc.latitude)
-			doc.longitude = parsed_lng if parsed_lng is not None else (float(longitude) if longitude is not None else doc.longitude)
-		else:
-			if latitude is not None:
-				doc.latitude = float(latitude)
-			if longitude is not None:
-				doc.longitude = float(longitude)
+	if location_url is not None and _location_fields_exist():
+		doc.location_url = location_url
 
 	doc.save(ignore_permissions=True)
 	frappe.db.commit()

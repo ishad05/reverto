@@ -66,10 +66,11 @@
    "label": "Location"
   },
   {
-   "description": "Paste a Google Maps or OpenStreetMap link — coordinates are extracted automatically",
+   "description": "Paste a Google Maps or OpenStreetMap link \u2014 coordinates are extracted automatically",
    "fieldname": "location_url",
    "fieldtype": "Data",
-   "label": "Location URL"
+   "label": "Location URL",
+   "length": 800
   },
   {
    "description": "Decimal degrees, e.g. 12.9716",
@@ -90,7 +91,7 @@
  "image_field": "product_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-23 12:00:00.000000",
+ "modified": "2026-03-26 20:19:14.537015",
  "modified_by": "Administrator",
  "module": "ReVerto",
  "name": "Product",
