@@ -360,7 +360,6 @@ export default function App() {
     return (
       <LoginPage
         onNavigateToSignup={() => setPage("signup")}
-        onSuccess={() => setPage(null)} // re-derive from profile
       />
     );
   }

@@ -4,16 +4,14 @@ import { LoginForm } from "../components/auth/LoginForm";
 
 interface LoginPageProps {
   onNavigateToSignup: () => void;
-  onSuccess: () => void;
 }
 
-export function LoginPage({ onNavigateToSignup, onSuccess }: LoginPageProps) {
+export function LoginPage({ onNavigateToSignup }: LoginPageProps) {
   return (
     <AuthLayout
       left={
         <LoginForm
           onNavigateToSignup={onNavigateToSignup}
-          onSuccess={onSuccess}
         />
       }
       right={<BrandingPanel variant="login" />}

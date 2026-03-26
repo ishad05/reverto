@@ -7,10 +7,9 @@ import logo from "../../../public/reverto_logo1.svg";
 
 interface LoginFormProps {
   onNavigateToSignup: () => void;
-  onSuccess: () => void;
 }
 
-export function LoginForm({ onNavigateToSignup, onSuccess }: LoginFormProps) {
+export function LoginForm({ onNavigateToSignup }: LoginFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -22,7 +21,10 @@ export function LoginForm({ onNavigateToSignup, onSuccess }: LoginFormProps) {
     setError(null);
     try {
       await login({ username: email, password });
-      onSuccess();
+      // Frappe sets the session cookie on the server. A full reload is the
+      // most reliable way to pick it up — React state alone can lag behind
+      // the SWR cache and leave the user stuck on the login page.
+      window.location.reload();
     } catch (err: unknown) {
       const msg =
         (err as { message?: string })?.message ??
