@@ -14,7 +14,8 @@ function useMarketplaceStats() {
     FrappeResponse<ProductSummary[]>
   >("reverto.api.products.list_products", { limit: 50 });
 
-  const products = data?.message ?? [];
+  const productsRaw = data?.message;
+  const products = useMemo(() => productsRaw ?? [], [productsRaw]);
 
   const listingCount = products.length;
   const sellerCount = useMemo(

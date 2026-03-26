@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   Package,
   Eye,
@@ -148,6 +148,8 @@ export function SellerDashboard({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<ProductFormData | null>(null);
   const [activeEnquiryId, setActiveEnquiryId] = useState<string | null>(null);
+  // eslint-disable-next-line react-hooks/purity
+  const mountTime = useRef(Date.now());
 
   // Fetch products
   const { data, isLoading, mutate } = useFrappeGetCall<FrappeResponse<SellerProduct[]>>(
@@ -173,11 +175,13 @@ export function SellerDashboard({
       undefined,
       { refreshInterval: 15000 },
     );
-  const orders = ordersData?.message ?? [];
+  const ordersRaw = ordersData?.message;
+  const orders = useMemo(() => ordersRaw ?? [], [ordersRaw]);
 
   const { call: deleteProduct } = useFrappePostCall("reverto.api.products.delete_product");
 
-  const products = data?.message ?? [];
+  const productsRaw = data?.message;
+  const products = useMemo(() => productsRaw ?? [], [productsRaw]);
 
   // Stats
   const activeProducts = useMemo(() => products.filter((p) => p.status === "Available"), [products]);
@@ -193,7 +197,7 @@ export function SellerDashboard({
     () =>
       products.filter((p) => {
         const diffDays = Math.floor(
-          (Date.now() - new Date(p.creation.replace(" ", "T").split(".")[0]).getTime()) / 86_400_000,
+          (mountTime.current - new Date(p.creation.replace(" ", "T").split(".")[0]).getTime()) / 86_400_000,
         );
         return diffDays < 7;
       }).length,

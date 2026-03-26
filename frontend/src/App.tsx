@@ -85,7 +85,8 @@ function Marketplace({ onProfile, sellerTabs }: MarketplaceProps) {
     ...(debouncedSearch ? { search: debouncedSearch } : {}),
   });
 
-  const products = data?.message ?? [];
+  const productsRaw = data?.message;
+  const products = useMemo(() => productsRaw ?? [], [productsRaw]);
 
   const listingCount = products.length;
   const sellerCount = useMemo(
