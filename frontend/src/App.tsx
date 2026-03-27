@@ -252,6 +252,7 @@ function Marketplace({ onProfile, sellerTabs }: MarketplaceProps) {
                           wasteType={product.category ?? "Other"}
                           sellerType={sellerType}
                           distance={`${distanceKm.toFixed(1)} km`}
+                          owner={product.owner}
                           onPurchaseSuccess={() => {
                             mutateProducts();
                             setOrdersRefreshKey((k) => k + 1);

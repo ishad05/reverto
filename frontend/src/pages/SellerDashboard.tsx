@@ -16,11 +16,12 @@ import {
   IndianRupee,
   CheckCircle2,
 } from "lucide-react";
-import { useFrappeGetCall, useFrappePostCall } from "frappe-react-sdk";
+import { useFrappeAuth, useFrappeGetCall, useFrappePostCall } from "frappe-react-sdk";
 import { Navigation } from "../components/Navigation";
 import { CartDrawer } from "../components/CartDrawer";
 import { Button } from "../components/ui/button";
 import { AddListingModal, type ProductFormData } from "../components/seller/AddListingModal";
+import { ProductDetailsModal } from "../components/ProductDetailsModal";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../components/ui/dialog";
 import { ChatWindow } from "../components/enquiry/ChatWindow";
 import { Badge } from "../components/ui/badge";
@@ -148,6 +149,7 @@ export function SellerDashboard({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<ProductFormData | null>(null);
   const [activeEnquiryId, setActiveEnquiryId] = useState<string | null>(null);
+  const [viewingProduct, setViewingProduct] = useState<SellerProduct | null>(null);
   // eslint-disable-next-line react-hooks/purity
   const mountTime = useRef(Date.now());
 
@@ -178,6 +180,7 @@ export function SellerDashboard({
   const ordersRaw = ordersData?.message;
   const orders = useMemo(() => ordersRaw ?? [], [ordersRaw]);
 
+  const { currentUser } = useFrappeAuth();
   const { call: deleteProduct } = useFrappePostCall("reverto.api.products.delete_product");
 
   const productsRaw = data?.message;
@@ -504,7 +507,10 @@ export function SellerDashboard({
                         </div>
 
                         <div className="mt-3 flex items-center gap-2">
-                          <button className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 rounded-lg text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                          <button
+                            onClick={() => setViewingProduct(product)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 rounded-lg text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                          >
                             <ExternalLink className="w-3.5 h-3.5" />
                             View
                           </button>
@@ -742,6 +748,23 @@ export function SellerDashboard({
           </div>
         )}
       </div>
+
+      {/* Product details modal (seller view — no buy CTA) */}
+      {viewingProduct && (
+        <ProductDetailsModal
+          open={!!viewingProduct}
+          onClose={() => setViewingProduct(null)}
+          productId={viewingProduct.name}
+          image={viewingProduct.product_image ?? ""}
+          title={viewingProduct.product_name}
+          category={viewingProduct.category}
+          rawQuantityKg={viewingProduct.quantity ?? undefined}
+          rawPricePerKg={viewingProduct.price_per_quantity ?? undefined}
+          status={viewingProduct.status}
+          owner={currentUser ?? ""}
+          canBuy={false}
+        />
+      )}
 
       {/* Add / Edit modal */}
       <AddListingModal

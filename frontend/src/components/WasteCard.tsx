@@ -5,6 +5,7 @@ import { Button } from "./ui/button";
 import { useCart } from "../context/CartContext";
 import { PaymentModal } from "./PaymentModal";
 import type { PaymentLine } from "./PaymentModal";
+import { ProductDetailsModal } from "./ProductDetailsModal";
 
 interface WasteCardProps {
   productId: string;
@@ -18,6 +19,7 @@ interface WasteCardProps {
   wasteType?: string;
   sellerType?: string;
   distance?: string;
+  owner?: string;
   onPurchaseSuccess?: () => void;
 }
 
@@ -33,6 +35,7 @@ export function WasteCard({
   wasteType,
   sellerType,
   distance,
+  owner,
   onPurchaseSuccess,
 }: WasteCardProps) {
   const { addItem, items } = useCart();
@@ -41,6 +44,7 @@ export function WasteCard({
   const maxQty = rawQuantityKg ?? 1;
   const [selectedQty, setSelectedQty] = useState(maxQty);
   const [buyOpen, setBuyOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   const isFree =
     !pricePerQuantity || pricePerQuantity.toLowerCase().includes("free");
@@ -206,7 +210,7 @@ export function WasteCard({
 
           {/* Secondary row */}
           <div className="flex items-center gap-2">
-            <Button className="flex-1" size="sm" variant="outline">
+            <Button className="flex-1" size="sm" variant="outline" onClick={() => setDetailsOpen(true)}>
               View details
             </Button>
             {canAddToCart && !inCart && (
@@ -227,7 +231,7 @@ export function WasteCard({
         </div>
       </Card>
 
-      {/* Direct purchase modal — rendered outside the card to avoid stacking context issues */}
+      {/* Direct purchase modal */}
       {canAddToCart && (
         <PaymentModal
           open={buyOpen}
@@ -240,6 +244,22 @@ export function WasteCard({
           }}
         />
       )}
+
+      {/* Product details modal */}
+      <ProductDetailsModal
+        open={detailsOpen}
+        onClose={() => setDetailsOpen(false)}
+        productId={productId}
+        image={image}
+        title={title}
+        category={wasteType}
+        rawQuantityKg={rawQuantityKg}
+        rawPricePerKg={rawPricePerKg}
+        status={status}
+        owner={owner ?? ""}
+        selectedQty={selectedQty}
+        onBuyNow={() => setBuyOpen(true)}
+      />
     </>
   );
 }
