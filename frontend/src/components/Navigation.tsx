@@ -1,6 +1,50 @@
-import { Search, MapPin, Bell, User, X, ShoppingCart, MessageSquare, ShoppingBag } from "lucide-react";
+import { Search, MapPin, User, X, ShoppingCart, MessageSquare, ShoppingBag, Loader2 } from "lucide-react";
 import logo from "../../public/reverto_logo1.svg";
 import { useCart } from "../context/CartContext";
+import { useEffect, useState } from "react";
+
+function useRealTimeLocation() {
+  const [label, setLabel] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      setLoading(false);
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      async ({ coords }) => {
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${coords.latitude}&lon=${coords.longitude}&format=json`,
+            { headers: { "Accept-Language": "en" } },
+          );
+          const data = await res.json();
+          const addr = data.address ?? {};
+          const place =
+            addr.suburb ||
+            addr.neighbourhood ||
+            addr.city_district ||
+            addr.town ||
+            addr.city ||
+            addr.county ||
+            addr.state_district ||
+            addr.state ||
+            null;
+          setLabel(place);
+        } catch {
+          setLabel(null);
+        } finally {
+          setLoading(false);
+        }
+      },
+      () => setLoading(false),
+      { timeout: 8000 },
+    );
+  }, []);
+
+  return { label, loading };
+}
 
 interface SellerTabsProps {
   currentTab: "listings" | "marketplace";
@@ -30,6 +74,7 @@ export function Navigation({
   ordersBadge = 0,
 }: NavigationProps) {
   const { totalItems, openCart } = useCart();
+  const { label: locationLabel, loading: locationLoading } = useRealTimeLocation();
 
   return (
     <nav className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
@@ -90,15 +135,16 @@ export function Navigation({
 
           {/* Right actions */}
           <div className="flex items-center gap-4">
-            <button className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
-              <MapPin className="w-5 h-5 text-emerald-600" />
-              <span className="text-sm">Bangalore East</span>
-            </button>
-
-            <button className="relative p-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
-              <Bell className="w-6 h-6" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-emerald-500 rounded-full" />
-            </button>
+            <div className="flex items-center gap-2 px-3 py-2 text-gray-700 rounded-lg">
+              {locationLoading ? (
+                <Loader2 className="w-4 h-4 text-emerald-600 animate-spin" />
+              ) : (
+                <MapPin className="w-5 h-5 text-emerald-600" />
+              )}
+              <span className="text-sm">
+                {locationLoading ? "Locating…" : locationLabel ?? "Location unavailable"}
+              </span>
+            </div>
 
             {onEnquiriesClick && (
               <button
