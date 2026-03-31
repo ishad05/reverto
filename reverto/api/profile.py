@@ -152,7 +152,7 @@ def rate_seller(enquiry_id: str, score: int, comment: Optional[str] = None) -> d
 	if frappe.session.user != enquiry.buyer:
 		frappe.throw("Only the buyer can rate this enquiry.", frappe.PermissionError)
 
-	if enquiry.status != "Accepted":
+	if enquiry.status not in ("Accepted", "Closed"):
 		frappe.throw("You can only rate after the deal is accepted.")
 
 	# Prevent duplicate ratings

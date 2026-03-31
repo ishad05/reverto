@@ -4,6 +4,7 @@ import { useFrappePostCall } from "frappe-react-sdk";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { Separator } from "./ui/seperator";
+import { SellerRatingWidget } from "./SellerRatingWidget";
 
 const GST = 0.18;
 
@@ -48,9 +49,10 @@ export function PaymentModal({
   directPurchase,
   onSuccess,
 }: PaymentModalProps) {
-  const [phase, setPhase] = useState<"review" | "processing" | "success">("review");
+  const [phase, setPhase] = useState<"review" | "processing" | "success" | "rating">("review");
   const [error, setError] = useState<string | null>(null);
   const [confirmedTotal, setConfirmedTotal] = useState<number>(0);
+  const [resolvedEnquiryId, setResolvedEnquiryId] = useState<string | null>(null);
 
   const { call: confirmPayment } = useFrappePostCall<{ success: boolean }>(
     "reverto.api.enquiry.confirm_payment",
@@ -70,15 +72,17 @@ export function PaymentModal({
 
     try {
       if (directPurchase) {
-        await buyDirect({
+        const res = await buyDirect({
           product_id: directPurchase.productId,
           quantity_kg: directPurchase.quantityKg,
         });
+        setResolvedEnquiryId(res?.enquiry_id ?? null);
       } else {
         if (!enquiryId) {
           throw new Error("No enquiry ID provided — cannot process payment.");
         }
         await confirmPayment({ enquiry_id: enquiryId });
+        setResolvedEnquiryId(enquiryId);
       }
       setConfirmedTotal(totalSnapshot);
       setPhase("success");
@@ -111,6 +115,7 @@ export function PaymentModal({
     setPhase("review");
     setError(null);
     setConfirmedTotal(0);
+    setResolvedEnquiryId(null);
     onClose();
   };
 
@@ -134,12 +139,35 @@ export function PaymentModal({
               <p className="text-2xl font-bold text-emerald-700">{fmt(confirmedTotal)}</p>
               <p className="text-xs text-gray-400 mt-0.5">incl. 18% GST</p>
             </div>
+            {resolvedEnquiryId ? (
+              <Button
+                className="w-full bg-amber-500 hover:bg-amber-600 gap-2"
+                onClick={() => setPhase("rating")}
+              >
+                Rate the Seller
+              </Button>
+            ) : null}
             <Button
-              className="w-full bg-emerald-600 hover:bg-emerald-700"
+              variant={resolvedEnquiryId ? "outline" : "default"}
+              className={resolvedEnquiryId ? "w-full" : "w-full bg-emerald-600 hover:bg-emerald-700"}
               onClick={handleClose}
             >
-              Done
+              {resolvedEnquiryId ? "Skip, go to home" : "Done"}
             </Button>
+          </div>
+        ) : phase === "rating" ? (
+          /* ── Rating screen ── */
+          <div className="flex flex-col items-center py-10 px-8 gap-5">
+            <div className="text-center space-y-1">
+              <h2 className="text-lg font-bold text-gray-900">How was the seller?</h2>
+              <p className="text-sm text-gray-500">Your feedback helps others make better decisions.</p>
+            </div>
+            <SellerRatingWidget
+              enquiryId={resolvedEnquiryId!}
+              onSubmitted={handleClose}
+              onSkip={handleClose}
+              skipLabel="Skip, go to home"
+            />
           </div>
         ) : (
           <>

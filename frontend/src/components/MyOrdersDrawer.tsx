@@ -1,5 +1,5 @@
-import { useEffect, useRef } from "react";
-import { ShoppingBag, Loader2, PackageCheck, IndianRupee } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ShoppingBag, Loader2, PackageCheck, IndianRupee, Star } from "lucide-react";
 import { useFrappeGetCall } from "frappe-react-sdk";
 import {
   Sheet,
@@ -9,6 +9,8 @@ import {
 } from "./ui/sheet";
 import { Badge } from "./ui/badge";
 import { Separator } from "./ui/seperator";
+import { Button } from "./ui/button";
+import { SellerRatingWidget } from "./SellerRatingWidget";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -62,6 +64,8 @@ interface MyOrdersDrawerProps {
 }
 
 export function MyOrdersDrawer({ isOpen, onClose, refreshKey = 0 }: MyOrdersDrawerProps) {
+  const [ratingOrderId, setRatingOrderId] = useState<string | null>(null);
+
   const { data, isLoading, mutate } = useFrappeGetCall<FrappeResp<Order[]>>(
     "reverto.api.enquiry.get_my_orders",
     {},
@@ -151,6 +155,7 @@ export function MyOrdersDrawer({ isOpen, onClose, refreshKey = 0 }: MyOrdersDraw
                 const subtotal = effectivePrice * order.quantity_kg;
                 const gst = subtotal * 0.18;
                 const grandTotal = subtotal + gst;
+                const isRating = ratingOrderId === order.name;
 
                 return (
                   <div key={order.name} className="px-6 py-4 hover:bg-gray-50 transition-colors">
@@ -209,6 +214,29 @@ export function MyOrdersDrawer({ isOpen, onClose, refreshKey = 0 }: MyOrdersDraw
                             <span>{fmt(grandTotal)}</span>
                           </div>
                         </div>
+
+                        {/* Rate seller */}
+                        {isRating ? (
+                          <div className="mt-3 bg-amber-50 border border-amber-100 rounded-xl px-3 py-3">
+                            <p className="text-xs font-medium text-amber-800 mb-2">Rate the seller</p>
+                            <SellerRatingWidget
+                              enquiryId={order.name}
+                              onSubmitted={() => setRatingOrderId(null)}
+                              onSkip={() => setRatingOrderId(null)}
+                              skipLabel="Cancel"
+                            />
+                          </div>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="mt-2 h-7 text-xs gap-1.5 text-amber-700 border-amber-200 hover:bg-amber-50"
+                            onClick={() => setRatingOrderId(order.name)}
+                          >
+                            <Star className="w-3.5 h-3.5" />
+                            Rate Seller
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </div>
