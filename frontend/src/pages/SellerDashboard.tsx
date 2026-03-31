@@ -303,16 +303,6 @@ export function SellerDashboard({
             </p>
           </div>
 
-          {/* Total Views (placeholder) */}
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-medium text-gray-600">Total Views</span>
-              <Eye className="w-5 h-5 text-blue-400" />
-            </div>
-            <p className="text-3xl font-bold text-gray-900">—</p>
-            <p className="text-xs text-gray-400 mt-1">Coming soon</p>
-          </div>
-
           {/* Total Inquiries — click to open enquiries tab */}
           <div
             className="bg-white rounded-xl border border-gray-200 p-5 cursor-pointer hover:border-purple-200 transition-colors"
@@ -768,6 +758,7 @@ export function SellerDashboard({
 
       {/* Add / Edit modal */}
       <AddListingModal
+        key={editingProduct?.name ?? "new"}
         open={isModalOpen}
         onClose={() => {
           setIsModalOpen(false);
