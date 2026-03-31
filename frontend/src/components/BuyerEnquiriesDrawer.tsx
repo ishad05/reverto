@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { MessageSquare, ChevronRight, Loader2, PackageOpen, CreditCard } from "lucide-react";
 import { useFrappeGetCall } from "frappe-react-sdk";
 import {
@@ -66,10 +66,16 @@ interface BuyerEnquiriesDrawerProps {
   onClose: () => void;
   /** Called after any successful payment so the parent can refresh My Orders */
   onPaymentSuccess?: () => void;
+  /** When set, immediately opens the chat for this enquiry ID */
+  openChatId?: string | null;
 }
 
-export function BuyerEnquiriesDrawer({ isOpen, onClose, onPaymentSuccess }: BuyerEnquiriesDrawerProps) {
+export function BuyerEnquiriesDrawer({ isOpen, onClose, onPaymentSuccess, openChatId }: BuyerEnquiriesDrawerProps) {
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (openChatId) setActiveChatId(openChatId);
+  }, [openChatId]);
   const [payEnquiry, setPayEnquiry] = useState<BuyerEnquiry | null>(null);
 
   const { data, isLoading, mutate } = useFrappeGetCall<FrappeResp<BuyerEnquiry[]>>(

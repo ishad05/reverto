@@ -55,6 +55,7 @@ function Marketplace({ onProfile, sellerTabs }: MarketplaceProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [enquiriesOpen, setEnquiriesOpen] = useState(false);
+  const [enquiryOpenChatId, setEnquiryOpenChatId] = useState<string | null>(null);
   const [ordersOpen, setOrdersOpen] = useState(false);
   const [ordersRefreshKey, setOrdersRefreshKey] = useState(0);
   const [mapBuyProduct, setMapBuyProduct] = useState<MapProduct | null>(null);
@@ -119,6 +120,7 @@ function Marketplace({ onProfile, sellerTabs }: MarketplaceProps) {
         isOpen={enquiriesOpen}
         onClose={() => setEnquiriesOpen(false)}
         onPaymentSuccess={() => setOrdersRefreshKey((k) => k + 1)}
+        openChatId={enquiryOpenChatId}
       />
       <MyOrdersDrawer
         isOpen={ordersOpen}
@@ -256,6 +258,12 @@ function Marketplace({ onProfile, sellerTabs }: MarketplaceProps) {
                           onPurchaseSuccess={() => {
                             mutateProducts();
                             setOrdersRefreshKey((k) => k + 1);
+                          }}
+                          onEnquire={async (productId, quantityKg) => {
+                            const result = await createEnquiry({ product_id: productId, quantity_kg: quantityKg });
+                            const enquiryId = result?.message?.enquiry_id;
+                            setEnquiriesOpen(true);
+                            if (enquiryId) setEnquiryOpenChatId(enquiryId);
                           }}
                         />
                       );

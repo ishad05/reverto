@@ -21,6 +21,7 @@ interface WasteCardProps {
   distance?: string;
   owner?: string;
   onPurchaseSuccess?: () => void;
+  onEnquire?: (productId: string, quantityKg: number) => void;
 }
 
 export function WasteCard({
@@ -37,6 +38,7 @@ export function WasteCard({
   distance,
   owner,
   onPurchaseSuccess,
+  onEnquire,
 }: WasteCardProps) {
   const { addItem, items } = useCart();
   const inCart = items.some((i) => i.id === productId);
@@ -201,6 +203,7 @@ export function WasteCard({
                 variant="outline"
                 size="sm"
                 className="flex-1 border-emerald-200 text-emerald-700 hover:bg-emerald-50 gap-1.5"
+                onClick={() => onEnquire?.(productId, selectedQty)}
               >
                 <MessageSquare className="w-3.5 h-3.5" />
                 Enquire
