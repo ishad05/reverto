@@ -319,8 +319,8 @@ export function ChatWindow({ enquiryId, onPaymentSuccess }: { enquiryId: string;
                       New Total: {fmt(newTotal)}
                     </div>
                   </div>
-                  {/* Accept / Decline — only for buyer on latest offer */}
-                  {isBuyer && isLatest && enquiry.status !== "Accepted" && (
+                  {/* Accept / Decline — shown to whoever received this offer */}
+                  {isLatest && msg.sender !== currentUser && enquiry.status !== "Accepted" && (
                     <div className="flex gap-2 pt-1">
                       <Button
                         size="sm"
@@ -404,8 +404,8 @@ export function ChatWindow({ enquiryId, onPaymentSuccess }: { enquiryId: string;
       {/* Input area */}
       {enquiry.status !== "Accepted" && enquiry.status !== "Closed" ? (
         <div className="px-5 py-4 border-t border-gray-100 space-y-3">
-          {/* Seller: propose price panel */}
-          {isSeller && (
+          {/* Propose price panel — available to both buyer and seller */}
+          {(isSeller || isBuyer) && (
             <div>
               {showPriceInput ? (
                 <div className="flex items-center gap-2">

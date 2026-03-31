@@ -165,10 +165,9 @@ def send_message(enquiry_id: str, message_text: str) -> dict:
 
 @frappe.whitelist()
 def propose_price(enquiry_id: str, new_price_per_kg: float) -> dict:
-	"""Seller proposes a new per-kg price."""
+	"""Buyer or seller proposes a new per-kg price."""
 	enquiry = frappe.get_doc("Reverto Enquiry", enquiry_id)
-	if frappe.session.user != enquiry.seller:
-		frappe.throw("Only the seller can propose a price.", frappe.PermissionError)
+	_assert_access(enquiry)
 
 	price = float(new_price_per_kg)
 	msg_name = _add_message(
@@ -189,21 +188,23 @@ def propose_price(enquiry_id: str, new_price_per_kg: float) -> dict:
 
 @frappe.whitelist()
 def respond_to_price(enquiry_id: str, accepted: int) -> dict:
-	"""Buyer accepts (accepted=1) or rejects (accepted=0) the latest price offer."""
+	"""The party who did NOT send the latest offer accepts or rejects it."""
 	enquiry = frappe.get_doc("Reverto Enquiry", enquiry_id)
-	if frappe.session.user != enquiry.buyer:
-		frappe.throw("Only the buyer can accept or reject a price.", frappe.PermissionError)
+	_assert_access(enquiry)
 
 	offer = frappe.get_all(
 		"Reverto Message",
 		filters={"enquiry": enquiry_id, "message_type": "price_offer"},
-		fields=["name", "proposed_price_per_kg"],
+		fields=["name", "proposed_price_per_kg", "sender"],
 		order_by="creation desc",
 		limit=1,
 		ignore_permissions=True,
 	)
 	if not offer:
 		frappe.throw("No price offer to respond to.")
+
+	if frappe.session.user == offer[0].sender:
+		frappe.throw("You cannot respond to your own price offer.", frappe.PermissionError)
 
 	agreed_price = float(offer[0].proposed_price_per_kg or 0)
 
@@ -215,7 +216,7 @@ def respond_to_price(enquiry_id: str, accepted: int) -> dict:
 	else:
 		enquiry.status = "Negotiating"
 		enquiry.save(ignore_permissions=True)
-		_add_message(enquiry_id, "price_rejected", "Price offer declined. Please propose a new price.")
+		_add_message(enquiry_id, "price_rejected", "Price offer declined.")
 
 	frappe.db.commit()
 	_push_realtime(enquiry, {"type": "price_response", "accepted": bool(int(accepted)), "enquiry_id": enquiry_id})
