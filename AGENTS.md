@@ -2,7 +2,7 @@
 
 This file tells AI coding agents (Cursor, Claude, etc.) how to work safely and effectively in the `reverto` app.
 
-ReVerto is an e‑waste marketplace built on **Frappe Framework** (backend) with a **React SPA** (frontend) using **shadcn‑style UI components** and **`frappe-react-sdk`** for talking to Frappe.
+ReVerto is a two-sided **waste marketplace** built on **Frappe Framework** (backend) with a **React SPA** (frontend) using **shadcn-style UI components** and **`frappe-react-sdk`** for talking to Frappe. It supports product listings, real-time negotiation/chat, cart checkout, environmental impact tracking, and a full seller dashboard.
 
 ---
 
@@ -52,6 +52,9 @@ bench --site <site-name> migrate
 
 # run server-side tests for this app
 bench --site <site-name> run-tests --app reverto
+
+# export fixture data (CO2 factors etc.)
+bench --site <site-name> export-fixtures --app reverto
 ```
 
 Linting and formatting (Python + JS/TS) are handled via **pre-commit** and CI:
@@ -68,44 +71,71 @@ Tools configured (see `pyproject.toml`, pre-commit config, and CI):
 - **JS/TS**: `eslint`, `prettier`.
 - **Security/quality** (CI): Semgrep Frappe rules, `pip-audit`.
 
-### Doppio + SPA scaffolding
-
-ReVerto already has a React SPA under `frontend/`. When adding **new SPAs or major reshuffles**, prefer using the **Doppio** app so structure stays consistent with Frappe best practices.
-
-High-level Doppio flow (run from bench root):
-
-```bash
-# install Doppio into your bench (once)
-bench get-app https://github.com/NagariaHussain/doppio
-
-# scaffold a new React SPA inside the reverto app
-bench add-spa --app reverto --name reverto-frontend --react --tailwindcss --typescript
-```
-
-When using Doppio:
-
-- Keep generated SPA code under a dedicated directory (e.g. `reverto/frontend`).
-- Ensure routing and build output remain compatible with `hooks.py` and `reverto/www/reverto.html`.
-- Reuse existing shadcn‑style UI components where possible instead of regenerating similar ones.
-
 ---
 
 ## Architecture (Quick Mental Model)
 
 - **Backend**: Frappe app `reverto/`
-  - Core DocType today: `Product` (`reverto/reverto/doctype/product`).
-  - Frappe handles multi‑tenant DB, authentication, roles/permissions, background jobs, and REST API.
-  - Future DocTypes will model sellers (individual/organization), buyers, listings, and orders.
+  - DocTypes: `Product`, `CO2 Factor`, `Reverto Enquiry`, `Reverto Message`, `Reverto Seller Profile`, `Reverto Rating`.
+  - Frappe handles multi-tenant DB, authentication, roles/permissions, background jobs, and REST API.
+  - All SPA-facing logic lives in `reverto/api/` (auth, products, profile, enquiry).
 - **Frontend**: React SPA in `frontend/`
-  - Built with Vite + React + Tailwind 4.
+  - Built with Vite + React + TypeScript + Tailwind CSS 4.
   - UI primitives follow **shadcn/ui** patterns (Radix + Tailwind; see `frontend/src/components/ui`).
   - Uses **`frappe-react-sdk`** for talking to Frappe (auth, data fetching/mutations, realtime).
+  - Global cart state via `CartContext`.
 - **Integration**:
   - SPA HTML entry lives at `reverto/www/reverto.html`.
   - `website_route_rules` in `hooks.py` route `/reverto/<path:reverto>` to the SPA.
-  - Built assets are served from `/assets/reverto/frontend/` via Frappe’s asset pipeline.
+  - Built assets are served from `/assets/reverto/frontend/` via Frappe's asset pipeline.
 
-See `ARCHITECTURE.md` for a deeper overview of flows and entities.
+See `ARCHITECTURE.md` for a detailed overview of flows and entities.
+
+---
+
+## File Map
+
+```
+reverto/api/
+  auth.py         signup, get_user_profile
+  products.py     list_products, my_products, create/update/delete_product
+  profile.py      seller profile CRUD, rate_seller, get_my_rating_for_enquiry
+  enquiry.py      create_enquiry, send_message, propose_price,
+                  respond_to_price, confirm_payment, direct_purchase,
+                  get_my_orders, get_seller_orders, get_sustainability_stats,
+                  get_buyer_enquiries, get_seller_enquiries
+
+reverto/reverto/doctype/
+  product/                    Marketplace listing
+  co2_factor/                 CO₂ kg/kg factors by waste category
+  reverto_enquiry/            Negotiation session (Open→Negotiating→Accepted→Closed)
+  reverto_message/            Chat messages within an enquiry
+  reverto_seller_profile/     Seller profile + aggregate avg_rating / rating_count
+  reverto_rating/             Post-transaction buyer rating (1–5 stars)
+
+frontend/src/
+  App.tsx                     Top-level router, auth guard, page switcher
+  context/CartContext.tsx      Global cart state (items, totals, open/close)
+  components/
+    Navigation.tsx            Sticky navbar (search, location label, badges, cart)
+    WasteCard.tsx             Product card (buy, enquire, details, add-to-cart)
+    ProductDetailsModal.tsx   Full product + seller detail modal
+    ProductMap.tsx            MapLibre interactive map with Supercluster clustering
+    CategoryFilters.tsx       Horizontal category filter chips
+    SustainabilityWidget.tsx  Personal + community CO₂/waste stats
+    CartDrawer.tsx            Cart slide-out with GST totals + batch checkout
+    PaymentModal.tsx          Confirm payment (enquiry or direct purchase)
+    BuyerEnquiriesDrawer.tsx  Buyer's open/negotiating enquiries list
+    MyOrdersDrawer.tsx        Buyer's completed orders
+    ProfilePage.tsx           Editable user/seller profile
+    enquiry/
+      ChatWindow.tsx          Real-time chat + price negotiation UI
+      EnquiryModal.tsx        Batch enquiry creation results
+    seller/
+      AddListingModal.tsx     Create/edit product listing form (with location parsing)
+    auth/                     LoginForm, SignupForm, AuthLayout, BrandingPanel
+    ui/                       Shadcn/ui primitives
+```
 
 ---
 
@@ -113,45 +143,90 @@ See `ARCHITECTURE.md` for a deeper overview of flows and entities.
 
 ### 1) Backend: DocTypes & APIs
 
-- **Where to add new marketplace entities**:
-  - DocType JSON + controller: `reverto/reverto/doctype/<doctype_name>/`.
-  - Example: `Product` lives in `reverto/reverto/doctype/product/`.
-- **When changing DocTypes**:
-  - Update the `.json` definition.
-  - If you add business logic, extend the `Document` subclass in `<doctype_name>.py`.
+- **Add a new marketplace entity**:
+  - Create DocType JSON + controller: `reverto/reverto/doctype/<name>/`.
+  - Add validation/side-effect logic in `<name>.py`.
   - Run `bench --site <site-name> migrate` after schema changes.
-- **APIs for the frontend**:
-  - Prefer **whitelisted Python functions** in a module like `reverto/api/*.py` or in DocType controllers.
-  - Use Frappe’s permission system instead of manual checks when possible.
-  - Expose read/write actions needed by the SPA: browsing products, creating listings, placing orders, etc.
-  - For **public marketplace listing data**, follow the pattern in `reverto/api/products.py`:
-    - Use `@frappe.whitelist(allow_guest=True)` for read‑only endpoints.
-    - Use `ignore_permissions=True` only when it is safe (e.g. public product catalogue data).
+  - Register data patches in `reverto/patches.txt` if existing records need updating.
+- **Add a new API endpoint**:
+  - Add to the right module in `reverto/api/` (or create one for a new domain).
+  - Use `@frappe.whitelist(allow_guest=True)` for public read endpoints.
+  - Use `@frappe.whitelist()` for authenticated endpoints and always validate `frappe.session.user` ownership.
+  - Never use `ignore_permissions=True` on write paths.
+- **Real-time events**:
+  - Publish with `frappe.publish_realtime(event="enquiry_{name}", message={"type": "..."})`.
+  - Include a `type` field so the frontend can route without parsing the full payload.
+  - See [Real-time Events](#real-time-events) below.
 
 ### 2) Frontend: React, shadcn, and Frappe
 
 Frontend code lives under `frontend/`:
 
 - **Entry points**:
-  - `frontend/src/main.tsx` – React root, wrapped in `FrappeProvider` from `frappe-react-sdk` using `url={window.location.origin}` (works in both dev via proxy and production).
-  - `frontend/src/App.tsx` – top‑level app shell for the e‑waste marketplace UI.
+  - `frontend/src/main.tsx` – React root, wrapped in `FrappeProvider` from `frappe-react-sdk` using `url={window.location.origin}`.
+  - `frontend/src/App.tsx` – top-level router, page switcher, auth state, enquiry badge counts.
 - **UI components**:
-  - Shared primitives in `frontend/src/components/ui/*` follow the shadcn/ui style (Radix + Tailwind).
-  - High‑level layout and marketplace components: `Navigation`, `Hero`, `WasteCard`, `CategoryFilters`, `SustainabilityWidget`, `Footer`, etc.
-- **Accessing Frappe from React** (preferred approach):
-  - Use `frappe-react-sdk` hooks instead of ad‑hoc `fetch` calls.
-  - Example patterns:
-    - `useFrappeGetCall("reverto.api.products.list_products", { limit })` to fetch the product list (returns `{ message: ProductSummary[] }`).
-    - `useFrappeGetDocList('Product', ...)` or `useFrappeGetDoc('Product', ...)` when you specifically need DocType records and user‑level permissions.
-    - `useFrappeCreateDoc('Product')` (or other DocTypes) to create new listings.
-    - `useFrappeAuth()` for login/logout and session handling.
+  - Shared primitives in `frontend/src/components/ui/*` – always prefer these over one-off inline styles.
+  - Feature components are in `frontend/src/components/` – compose from primitives.
+- **Adding a new page/view**:
+  - Create a component in `frontend/src/components/`.
+  - Add a `currentPage` state case in `App.tsx` with the appropriate auth guard.
+  - If a new URL path is needed, add a route rule in `hooks.py`.
+- **Accessing Frappe from React** – always use `frappe-react-sdk` hooks:
 
-When wiring new features:
+  ```ts
+  // Read list
+  useFrappeGetCall("reverto.api.products.list_products", { limit: 50 });
 
-- Keep all network access behind `frappe-react-sdk` so auth, CSRF, and error handling stay centralized.
-- Keep UI components **presentational** and move data fetching/mutations into hooks or container components.
+  // Read doc
+  useFrappeGetDoc("Product", name);
 
-### 3) Testing Changes
+  // Read doc list with filters
+  useFrappeGetDocList("Product", { fields, filters, limit, order_by });
+
+  // Mutation
+  const { call } = useFrappePostCall("reverto.api.enquiry.create_enquiry");
+  await call({ product_id: id, quantity_kg: qty });
+
+  // Polling
+  useFrappeGetCall("...", {}, undefined, { refreshInterval: 15000 });
+
+  // Real-time
+  useFrappeEventListener("enquiry_ENQ-0001", (data) => refetch());
+  ```
+
+- **Cart changes**: All cart state, totals, and GST (18%) live in `CartContext.tsx`. Update there first; `CartDrawer.tsx` and `PaymentModal.tsx` consume it.
+- **Enquiry/checkout changes**: `CartDrawer.tsx` → `create_enquiry` (batch), `PaymentModal.tsx` → `confirm_payment` or `direct_purchase`. GST rate is also hardcoded in `enquiry.py` – change both if the rate changes.
+
+### 3) Location / Maps
+
+Location URL parsing happens in **two places**:
+
+- **Backend** `reverto/api/products.py` (`_parse_location_url`): resolves short URLs (HTTP redirect), then applies regex patterns for Google Maps `@lat,lng`, query params `q=lat,lng`, OpenStreetMap hash format, and bare decimal pairs.
+- **Frontend** `AddListingModal.tsx`: client-side preview; short URLs are flagged for backend resolution on submit.
+
+If a new Maps URL format needs to be supported, update the regex patterns in **both** files.
+
+### 4) Sustainability / CO₂
+
+- CO₂ factors are stored in the `CO2 Factor` DocType and can be edited via Frappe Desk or via `reverto/fixtures/`.
+- `get_sustainability_stats()` in `enquiry.py` loads all factors in a single query; missing categories fall back to `1.0 kg CO₂/kg`.
+- The `fixtures` key in `hooks.py` controls which records are exported/imported via `bench migrate`.
+
+### 5) Real-time Events
+
+| Event | Publisher | Listener |
+|---|---|---|
+| `enquiry_{enquiry_id}` | `enquiry.py` on any state change | `ChatWindow.tsx` + 15s polling fallback |
+| `new_enquiry` | `create_enquiry` | `SellerDashboard.tsx` + 15s polling fallback |
+
+When adding a new real-time event:
+
+1. Publish from Python with a `type` field in the message.
+2. Subscribe in the React component with `useFrappeEventListener`.
+3. Add a 15s `refreshInterval` fallback on the `useFrappeGetCall` hook covering the same data.
+
+### 6) Testing Changes
 
 - **Python/Frappe tests**:
 
@@ -159,43 +234,31 @@ When wiring new features:
   bench --site <site-name> run-tests --app reverto
   ```
 
-  - In CI, the site is created as `test_site`; locally, ask the user or README for the correct site name.
-  - Respect Frappe fixtures and data setup patterns when adding tests.
+  - Test files live next to their DocType: `reverto/reverto/doctype/<name>/test_<name>.py`.
+  - In CI the site is `test_site`.
 
 - **Frontend checks**:
 
   ```bash
-  cd frontend
-  yarn lint
-  yarn test   # if/when a test runner is configured
+  cd frontend && yarn lint
   ```
-
-  - For now, rely on manual testing in the browser plus linting.
-
-- **End‑to‑end flows**:
-  - Start Frappe bench (`bench start`) and the Vite dev server (`yarn dev`).
-  - Test flows in the browser at `/reverto` (Frappe‑served) or via the Vite dev URL, depending on environment.
 
 ---
 
 ## Conventions & Guardrails for Agents
 
-- **Do not** modify bench‑level configuration or external services unless explicitly asked.
-- **Prefer small, focused changes**:
-  - Update one DocType or feature at a time.
-  - Keep frontend changes isolated to a component/route when possible.
-- **Respect existing tooling**:
-  - Ensure `pre-commit run --all-files` passes before considering work “done”.
-  - Fix new lints you introduce; avoid large unrelated reformatting.
+- **Do not** modify bench-level configuration or external services unless explicitly asked.
+- **Prefer small, focused changes**: update one DocType or feature at a time; keep frontend changes isolated to a component where possible.
+- **Respect existing tooling**: ensure `pre-commit run --all-files` passes before considering work done. Fix lints you introduce; avoid large unrelated reformatting.
 - **Security & data safety**:
   - Do not hardcode secrets, tokens, or credentials.
-  - Use Frappe’s permission and role system to protect seller/buyer data.
-- **Documentation**:
-  - When you add user‑visible or architectural features, update `ARCHITECTURE.md` or `README.md` as appropriate.
+  - Use Frappe's permission and role system to protect seller/buyer data.
+  - Never expose another user's data via a guest or buyer endpoint.
+- **No speculative abstractions**: write code for the task at hand; do not add helpers, configs, or flags for hypothetical future requirements.
+- **Documentation**: when you add user-visible or architectural features, update `ARCHITECTURE.md` or `README.md` as appropriate.
 
-If in doubt about where something should live, prefer:
+If in doubt about where something should live:
 
-- Backend/domain logic → Frappe DocTypes and hooks in `reverto/`.
-- UX and presentation → React components in `frontend/src/components`.
-- Cross‑cutting conventions or architecture changes → `ARCHITECTURE.md`.
-
+- Backend/domain logic → Frappe DocTypes and API modules in `reverto/`.
+- UX and presentation → React components in `frontend/src/components/`.
+- Cross-cutting conventions or architecture changes → `ARCHITECTURE.md`.

@@ -64,27 +64,33 @@ simultaneously — a recycler might buy plastic waste and sell processed pellets
 Seller lists waste product
         │
         ▼
-Buyer browses marketplace (category filters, search)
+Buyer browses marketplace (category filters, search, or map view)
         │
-        ▼
-Buyer adds to cart → clicks "Proceed to Enquiry"
-        │
-        ▼
-System creates an Enquiry record linking buyer ↔ seller ↔ product
-        │
-        ▼
-Buyer & Seller negotiate in real-time chat
-  ├─ Seller proposes price → Buyer accepts / rejects
-  └─ Free-text messages throughout
-        │
-        ▼
-Enquiry status changes: Open → Negotiating → Accepted
-        │
-        ▼
-Buyer clicks "Pay Now" → Payment confirmed in system
-        │
-        ▼
-Enquiry status: Closed
+        ├─── Direct Purchase path ──────────────────────────────────┐
+        │    Buyer clicks "Buy Now" on a listing                    │
+        │    → PaymentModal shows price + 18% GST                  │
+        │    → direct_purchase creates a Closed enquiry immediately │
+        │    → inventory reduced instantly                          │
+        │                                                            │
+        └─── Negotiation path ──────────────────────────────────────┤
+             Buyer adds to cart → clicks "Proceed to Enquiry"       │
+                     │                                               │
+                     ▼                                               │
+             System creates Enquiry record (buyer ↔ seller ↔ product│
+                     │                                               │
+                     ▼                                               │
+             Buyer & Seller negotiate in real-time chat              │
+               ├─ Seller proposes price → Buyer accepts / rejects    │
+               └─ Free-text messages throughout                      │
+                     │                                               │
+                     ▼                                               │
+             Enquiry: Open → Negotiating → Accepted                  │
+                     │                                               │
+                     ▼                                               │
+             Buyer clicks "Pay Now" → Payment confirmed              │
+                     │                                               │
+                     ▼                                               │
+             Enquiry status: Closed ◄──────────────────────────────-┘
 Product inventory reduced by the transacted quantity
         │
         ▼
@@ -118,6 +124,7 @@ Both parties see updated CO₂ savings on the Sustainability Widget
 | **Icons** | Lucide React | Consistent SVG icon set |
 | **Frappe ↔ React bridge** | frappe-react-sdk | Handles CSRF, session cookies, SWR-style caching, real-time listeners |
 | **Real-time chat** | Frappe WebSocket (`publish_realtime`) | Built into Frappe — no extra infrastructure needed |
+| **Maps** | React Map GL + MapLibre + Supercluster | Interactive product map with clustering; free OpenStreetMap tiles, no API key needed |
 
 ---
 
@@ -443,8 +450,8 @@ The React SPA needs to be compiled and its output placed where Frappe can serve 
 
 ```bash
 cd apps/reverto/frontend
-npm install
-npm run build
+yarn install
+yarn build
 cd ../../..
 ```
 
@@ -525,8 +532,8 @@ bench --site reverto.localhost migrate
 
 ```bash
 cd apps/reverto/frontend
-npm install
-npm run build
+yarn install
+yarn build
 cd ../../..
 ```
 
@@ -566,12 +573,12 @@ bench start
 In a second terminal, run Vite's dev server:
 ```bash
 cd reverto-bench/apps/reverto/frontend
-npm run dev
+yarn dev
 ```
 
 The Vite dev server proxies API calls to Frappe and gives you instant hot module replacement
 when editing React components — changes reflect in the browser without a page reload or
-rebuild.
+rebuild. The SPA is served at **http://reverto.localhost:5173** in dev mode.
 
 ### Accessing the Frappe Admin Desk
 
@@ -683,12 +690,12 @@ Write your code. Follow the project conventions:
 Run the frontend build to catch TypeScript errors:
 ```bash
 cd apps/reverto/frontend
-npm run build
+yarn build
 ```
 
 Run the linter:
 ```bash
-npm run lint
+yarn lint
 ```
 
 Check Python with ruff (if you changed backend code):
@@ -846,7 +853,7 @@ redis-cli ping    # must return PONG
 Make sure the build completed without errors, then restart bench:
 
 ```bash
-cd apps/reverto/frontend && npm run build && cd ../../..
+cd apps/reverto/frontend && yarn build && cd ../../..
 bench restart
 ```
 
