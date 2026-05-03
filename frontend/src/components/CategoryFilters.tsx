@@ -8,10 +8,6 @@ import {
   Building2,
   Shirt,
   Wine,
-  MapPin,
-  DollarSign,
-  Package,
-  Truck
 } from "lucide-react";
 
 export const categories = [
@@ -25,12 +21,6 @@ export const categories = [
   { id: "glass", name: "Glass", value: "Glass", icon: Wine },
 ];
 
-const additionalFilters = [
-  { id: "distance", name: "Distance", icon: MapPin },
-  { id: "price", name: "Price", icon: DollarSign },
-  { id: "quantity", name: "Quantity", icon: Package },
-  { id: "pickup", name: "Pickup Type", icon: Truck },
-];
 
 interface CategoryFiltersProps {
   selectedCategory: string | null;
@@ -58,23 +48,6 @@ export function CategoryFilters({ selectedCategory, onCategoryChange }: Category
               >
                 <Icon className="w-4 h-4" />
                 <span className="text-sm font-medium">{category.name}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Additional Filter Chips */}
-        <div className="flex items-center gap-2 overflow-x-auto">
-          <span className="text-sm text-gray-500 whitespace-nowrap mr-2">Filters:</span>
-          {additionalFilters.map((filter) => {
-            const Icon = filter.icon;
-            return (
-              <button
-                key={filter.id}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm border transition-all whitespace-nowrap bg-white border-gray-300 text-gray-600 hover:bg-gray-50"
-              >
-                <Icon className="w-3.5 h-3.5" />
-                <span>{filter.name}</span>
               </button>
             );
           })}
