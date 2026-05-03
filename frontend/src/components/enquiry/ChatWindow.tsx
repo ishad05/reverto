@@ -500,13 +500,15 @@ export function ChatWindow({ enquiryId, onPaymentSuccess }: { enquiryId: string;
                 </div>
               </div>
 
-              <Button
-                className="w-full bg-emerald-600 hover:bg-emerald-700 gap-2"
-                onClick={() => setPayOpen(true)}
-              >
-                <CreditCard className="w-4 h-4" />
-                Proceed to Pay
-              </Button>
+              {isBuyer && (
+                <Button
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 gap-2"
+                  onClick={() => setPayOpen(true)}
+                >
+                  <CreditCard className="w-4 h-4" />
+                  Proceed to Pay
+                </Button>
+              )}
 
               {isBuyer && <RateSellerWidget enquiryId={enquiry.name} />}
             </>
